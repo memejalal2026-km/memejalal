@@ -50,6 +50,8 @@
   @keyframes bob{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
   @keyframes blink{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
   /* 5초 룰 박스 */
+  .online{text-align:center;font-size:13px;color:var(--sub);margin:-6px 0 10px}
+  .online b{color:var(--ink);font-size:15px}
   .rule3{background:#fff4c2;border:3px solid var(--ink);padding:12px;margin:14px 0;text-align:center;font-size:14px;line-height:1.6}
   .rule3 .big{font-size:20px;font-weight:700;margin-bottom:4px;color:var(--ng)}
   ul.rules{list-style:none;margin-bottom:16px}
@@ -164,6 +166,8 @@
       <h1 class="pixel-title">밈잘알?</h1>
       <p class="tag blink">너, 밈 좀 아냐? 5초 안에 증명해!</p>
     </div>
+
+    <div id="online" class="online hidden">🟢 지금 <b id="online-n">0</b>명 접속 중</div>
 
     <div class="rule3">
       <div class="big">⏱️ 5초 룰</div>
@@ -769,6 +773,7 @@ let game = null;
 let shareMsg = "";
 
 function startSolo(){
+  logEvent("solo_start");
   const used = new Set();
   const qs = [];
   for(let lv=1; lv<=CONFIG.QUESTIONS_PER_GAME; lv++) qs.push(pickQuestion(lv, used));
@@ -806,6 +811,7 @@ function soloFinish(){
   $("r-score").textContent = `${game.score} / ${CONFIG.QUESTIONS_PER_GAME}`;
   $("r-ment").textContent = r.m;
   shareMsg = `밈잘알? ${game.score}/${CONFIG.QUESTIONS_PER_GAME} - ${r.t} ${r.e}\n너도 5초 안에 도전해 봐!`;
+  logEvent("solo_finish", game.score);
   if(window.afterSolo) afterSolo();
   show("result");
 }
@@ -829,6 +835,7 @@ function renderSetup(){
 
 function startParty(){
   const names = [...$("names").querySelectorAll("input")].map((inp,i)=> inp.value.trim() || `${i+1}P`);
+  logEvent("party_start", names.length);
   game = {
     mode:"party",
     players: names.map(name=>({name, pass:0, fail:0})),
@@ -987,6 +994,40 @@ async function loadApproved(){
   });
 }
 loadApproved();
+
+/* ============ 접속자 수 · 이용 기록 (이름·연락처 없이 익명 번호만 사용) ============ */
+const VID = (()=>{
+  try{
+    let v = localStorage.getItem("meme_vid");
+    if(!v){ v = Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); localStorage.setItem("meme_vid", v); }
+    return v;
+  }catch(e){ return "t" + Math.random().toString(36).slice(2,10); }
+})();
+function logEvent(e, d){
+  if(!CONFIG.QUESTIONS_API) return;
+  try{
+    fetch(CONFIG.QUESTIONS_API, {method:"POST", mode:"no-cors", keepalive:true, headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({type:"log", v:VID, m:(typeof getMe==="function"?getMe():""), e, d})}).catch(()=>{});
+  }catch(err){}
+}
+async function pingOnline(){
+  if(!CONFIG.QUESTIONS_API || document.hidden) return;
+  try{
+    const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 6000);
+    const res = await fetch(CONFIG.QUESTIONS_API + "?a=ping&v=" + encodeURIComponent(VID), {signal:ctrl.signal});
+    clearTimeout(t);
+    const j = await res.json();
+    if(j && j.online > 0){ $("online-n").textContent = j.online; $("online").classList.remove("hidden"); }
+  }catch(err){}
+}
+(function(){
+  let day = "", today = new Date().toISOString().slice(0,10);
+  try{ day = localStorage.getItem("meme_visit_day") || ""; }catch(e){}
+  if(day !== today){ logEvent("visit"); try{ localStorage.setItem("meme_visit_day", today); }catch(e){} }
+  pingOnline();
+  setInterval(pingOnline, 45000);
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) pingOnline(); });
+})();
 
 const sndBtn = $("btn-sound");
 function paintSnd(){ sndBtn.textContent = soundOn ? "🔊" : "🔇"; }
