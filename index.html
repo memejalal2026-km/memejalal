@@ -148,6 +148,13 @@
   body.no-ad .toast{bottom:30px}
 
   /* 화분 키우기 */
+  .rank-list{margin:6px 0 14px;text-align:left}
+  .rank-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border:3px solid var(--ink);background:#fff;margin-bottom:6px;font-weight:700;font-size:15px}
+  .rank-row.me{background:#fff4c2}
+  .rank-row .no{width:28px;text-align:center;font-size:16px}
+  .rank-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank-row .sc{font-size:13px;color:#6b5fb0;white-space:nowrap}
+  .rank-empty{padding:18px 6px;text-align:center;color:#6b5fb0;font-size:14px}
   .tabs{display:flex;gap:8px;margin:10px 0 14px}
   .tabs button{flex:1;padding:10px 4px;font-size:14px;font-weight:700;background:#efebff;color:var(--ink);border:3px solid var(--ink)}
   .tabs button.on{background:var(--main);color:#fff}
@@ -316,7 +323,7 @@
     <p class="tag">닉네임과 비밀번호만 있으면 돼요.<br>개인정보는 받지 않아요!</p>
     <div class="field"><label for="m-nick">닉네임</label><input id="m-nick" maxlength="10" placeholder="2~10자" autocomplete="username"></div>
     <div class="field"><label for="m-pw">비밀번호</label><input id="m-pw" type="password" maxlength="20" placeholder="4자 이상" autocomplete="current-password"></div>
-    <p class="modehint" style="margin:0 0 12px">⚠️ 지금은 <b>이 기기(브라우저)에만</b> 저장돼요.<br>다른 기기에서는 화분이 보이지 않아요.</p>
+    <p class="modehint" style="margin:0 0 12px">☁️ 화분은 <b>서버에 저장</b>돼요. 다른 기기에서도 같은 닉네임·비밀번호로 이어서 키울 수 있어요.<br>비밀번호를 잊으면 찾을 수 없으니 꼭 기억해 두세요.</p>
     <button class="btn" id="m-login">로그인</button>
     <button class="btn friend" id="m-signup">회원가입</button>
     <button class="btn ghost" id="m-back">뒤로</button>
@@ -343,6 +350,15 @@
     <button class="btn" id="g-play">🎮 퀴즈 하러 가기 (물 주기)</button>
     <button class="btn ghost" id="g-logout">로그아웃</button>
     <button class="btn ghost" id="g-back">처음으로</button>
+  </section>
+
+  <!-- 11. 랭킹 -->
+  <section id="screen-rank" class="card hidden">
+    <h2>🏆 화분 랭킹</h2>
+    <p class="modehint" style="margin:0 0 10px">모은 화분이 많은 순서예요. 닉네임과 화분 수만 공개돼요.</p>
+    <div id="rank-list" class="rank-list"></div>
+    <button class="btn" id="rank-refresh">🔄 새로고침</button>
+    <button class="btn ghost" id="rank-back">처음으로</button>
   </section>
 
   <!-- 10. 밈 짤 추가하기 (이미지만 보내면 돼요) -->
@@ -749,7 +765,7 @@ const TEASE_TIMEOUT = [
 
 /* ============ 유틸 ============ */
 const $ = id => document.getElementById(id);
-const screens = ["start","setup","turn","quiz","tresult","summary","result","member","garden","meme"];
+const screens = ["start","setup","turn","quiz","tresult","summary","result","member","garden","meme","rank"];
 function show(name){ screens.forEach(s => $("screen-"+s).classList.toggle("hidden", s!==name)); window.scrollTo(0,0); if(name==="start" && typeof refreshJoin==="function"){ try{ refreshJoin(); }catch(e){} } }
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -1518,7 +1534,24 @@ $("g-back").onclick=()=>show("start");
 $("btn-garden").onclick=openGarden;
 function refreshJoin(){ const m=me(); $("btn-join").textContent = m ? "👤 "+m.nick : "👤 회원가입"; }
 $("btn-join").onclick=()=>{ if(me()) openGarden(); else show("member"); };
-$("btn-rank").onclick=()=>toast("🏆 랭킹은 곧 열려요! 회원가입해 두면 첫 랭킹부터 참여할 수 있어요");
+async function openRank(){
+  show("rank");
+  const box=$("rank-list"); box.innerHTML='<div class="rank-empty">불러오는 중…</div>';
+  const c=sbc();
+  if(!c){ box.innerHTML='<div class="rank-empty">서버에 연결할 수 없어요. 잠시 후 다시 해 주세요.</div>'; return; }
+  try{
+    const r=await c.from("profiles").select("nickname,plants,pot_step").order("plants",{ascending:false}).order("pot_step",{ascending:false}).limit(30);
+    if(r.error) throw r.error;
+    const rows=r.data||[], mine=getMe();
+    if(!rows.length){ box.innerHTML='<div class="rank-empty">아직 회원이 없어요. 첫 번째 주인공이 되어 보세요! 🌱</div>'; return; }
+    const medal=["🥇","🥈","🥉"];
+    box.innerHTML=rows.map((x,i)=>'<div class="rank-row'+(x.nickname===mine?' me':'')+'"><span class="no">'+(medal[i]||(i+1))+'</span><span class="nm"></span><span class="sc">🌸 '+(x.plants|0)+' · 💧 '+(x.pot_step|0)+'</span></div>').join("");
+    box.querySelectorAll(".nm").forEach((el,i)=>{ el.textContent=rows[i].nickname; });
+  }catch(e){ box.innerHTML='<div class="rank-empty">랭킹을 불러오지 못했어요. 잠시 후 다시 해 주세요.</div>'; }
+}
+$("btn-rank").onclick=openRank;
+$("rank-refresh").onclick=openRank;
+$("rank-back").onclick=()=>show("start");
 refreshJoin();
 
 /* --- 혼자 하기 끝나면: 물 주기 + 결과 화면에 화분 표시 --- */
