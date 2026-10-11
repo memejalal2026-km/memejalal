@@ -1156,6 +1156,16 @@ function logEvent(e, d){
       body: JSON.stringify({type:"log", v:VID, m:(typeof getMe==="function"?getMe():""), e, d})}).catch(()=>{});
   }catch(err){}
 }
+/* 회원 현황 기록: 하루 한 번, 닉네임·모은 화분 수·현재 화분 단계만 (비밀번호 등은 보내지 않음) */
+function logMember(){
+  try{
+    const m = me(); if(!m) return;
+    const today = new Date().toISOString().slice(0,10);
+    if(localStorage.getItem("meme_member_day") === today) return;
+    logEvent("member", (m.data.coll||[]).length + "|" + (m.data.pot ? (m.data.pot.step||0) : 0));
+    localStorage.setItem("meme_member_day", today);
+  }catch(e){}
+}
 async function pingOnline(){
   if(!CONFIG.QUESTIONS_API || document.hidden) return;
   try{
@@ -1164,12 +1174,14 @@ async function pingOnline(){
     clearTimeout(t);
     const j = await res.json();
     if(j && j.online > 0){ $("online-n").textContent = j.online; $("online").classList.remove("hidden"); }
+    if(j && j.total > 0){ $("total-n").textContent = Number(j.total).toLocaleString("ko-KR"); $("total-wrap").classList.remove("hidden"); $("online").classList.remove("hidden"); }
   }catch(err){}
 }
 (function(){
   let day = "", today = new Date().toISOString().slice(0,10);
   try{ day = localStorage.getItem("meme_visit_day") || ""; }catch(e){}
   if(day !== today){ logEvent("visit"); try{ localStorage.setItem("meme_visit_day", today); }catch(e){} }
+  logMember();
   pingOnline();
   setInterval(pingOnline, 45000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) pingOnline(); });
@@ -1289,7 +1301,7 @@ async function doAuth(signup){
     if(!u[nick]||u[nick].h!==h){ toast("닉네임이나 비밀번호가 달라요"); return; }
     setMe(nick); toast(nick+"님 어서 와요!");
   }
-  $("m-pw").value=""; openGarden();
+  $("m-pw").value=""; logMember(); openGarden();
 }
 $("m-login").onclick=()=>doAuth(false);
 $("m-signup").onclick=()=>doAuth(true);
