@@ -733,7 +733,7 @@ function pickQuestion(level, used){
   const p = (withImg.length && Math.random() < (CONFIG.IMAGE_FIRST||0)) ? rand(withImg) : rand(pool);
   used.add(p.q);
   seen.add(p.q); saveSeen(seen);
-  return {q:p.q, img:p.img||"", opts:shuffle(p.o.map((text,k)=>({text,correct:k===p.a})))};
+  return {id:p.id||"", q:p.q, img:p.img||"", opts:shuffle(p.o.map((text,k)=>({text,correct:k===p.a})))};
 }
 
 /* ============ 효과음 (파일 없이 브라우저가 직접 만들어요) ============ */
@@ -842,6 +842,7 @@ function showQuestion(q, label, limit, done){
     const ok = i===ci, timeout = i<0;
     $("flash").textContent = ok ? "⭕ 정답!" : (timeout ? "⏰ 땡! 시간 초과!" : "❌ 땡!");
     if(!ok){ playDang(); const card = $("screen-quiz"); card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
+    logEvent("q_result", (q.id||q.q.slice(0,30))+"|"+(ok?"o":(timeout?"t":"x")));
     done(ok, timeout);
   }
   let started = false;
