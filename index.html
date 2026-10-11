@@ -1426,7 +1426,7 @@ async function doAuth(signup){
           if(p&&!p.data){ await c.from("profiles").insert({id:r.data.user.id, nickname:nick}); }
         }
       }
-    }catch(err){ remote=null; created=false; if(!sbNet(err)) { toast("서버 오류예요. 잠시 후 다시 해 주세요"); return; } }
+    }catch(err){ remote=null; created=false; if(!sbNet(err)) { try{console.warn("supabase",err);}catch(e2){} toast("서버 오류: "+String((err&&err.message)||err).slice(0,60)); return; } }
   }
   const online=!!(remote||created);
   if(signup){
