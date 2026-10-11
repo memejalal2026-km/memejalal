@@ -40,22 +40,26 @@
   h2{font-size:24px;margin-bottom:6px}
   .tag{text-align:center;color:var(--sub);margin-bottom:18px;font-size:15px;line-height:1.5}
   .emoji{font-size:52px;text-align:center;margin-bottom:8px}
-  /* 로고 */
-  .logo{text-align:center;margin-bottom:12px}
-  .mark{display:inline-block;animation:bob 1s steps(2) infinite}
-  .mark svg{display:block}
-  .pixel-title{font-size:clamp(40px,12vw,52px);letter-spacing:2px;color:var(--fight);
-    text-shadow:2px 2px 0 var(--ink),4px 4px 0 var(--ink);margin:6px 0 10px}
+  /* 로고 : 그림과 제목을 한 줄로 붙여서 세로 공간을 아껴요 */
+  .logo{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}
+  .logo-text{text-align:left}
+  .mark{display:inline-block;animation:bob 1s steps(2) infinite;flex:none}
+  .mark svg{display:block;width:60px;height:60px}
+  .pixel-title{font-size:clamp(36px,11vw,46px);letter-spacing:2px;color:var(--fight);text-align:left;
+    text-shadow:2px 2px 0 var(--ink),4px 4px 0 var(--ink);margin:0 0 6px}
+  .logo .tag{text-align:left;font-size:13px;margin:0}
   .blink{animation:blink 1.2s steps(2) infinite;color:var(--main);font-weight:700;margin-bottom:0}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn-row .btn{padding:12px 6px;font-size:15px}
   @keyframes bob{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
   @keyframes blink{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
   /* 5초 룰 박스 */
   .online{text-align:center;font-size:13px;color:var(--sub);margin:-6px 0 10px}
   .online b{color:var(--ink);font-size:15px}
-  .rule3{background:#fff4c2;border:3px solid var(--ink);padding:12px;margin:14px 0;text-align:center;font-size:14px;line-height:1.6}
-  .rule3 .big{font-size:20px;font-weight:700;margin-bottom:4px;color:var(--ng)}
-  ul.rules{list-style:none;margin-bottom:16px}
-  ul.rules li{padding:10px 12px;background:#f3f0ff;border:2px solid var(--ink);margin-bottom:8px;font-size:14px;line-height:1.55}
+  .rule3{background:#fff4c2;border:3px solid var(--ink);padding:9px 10px;margin:10px 0;text-align:center;font-size:13px;line-height:1.5}
+  .rule3 .big{font-size:17px;font-weight:700;margin-bottom:2px;color:var(--ng)}
+  ul.rules{list-style:none;margin-bottom:6px}
+  ul.rules li{padding:7px 10px;background:#f3f0ff;border:2px solid var(--ink);margin-bottom:6px;font-size:13px;line-height:1.45}
   button{font-family:inherit;cursor:pointer;border:none}
   .btn{display:block;width:100%;padding:15px;font-size:17px;font-weight:700;background:var(--main);color:#fff;border:3px solid var(--ink);box-shadow:0 5px 0 var(--ink);transition:transform .08s,box-shadow .08s;margin-top:12px}
   .btn:hover{background:var(--main-d)}
@@ -163,8 +167,10 @@
   <section id="screen-start" class="card">
     <div class="logo">
       <div id="logo-mark" class="mark"></div>
-      <h1 class="pixel-title">밈잘알?</h1>
-      <p class="tag blink">너, 밈 좀 아냐? 5초 안에 증명해!</p>
+      <div class="logo-text">
+        <h1 class="pixel-title">밈잘알?</h1>
+        <p class="tag blink">너, 밈 좀 아냐? 5초 안에 증명해!</p>
+      </div>
     </div>
 
     <div id="online" class="online hidden">🟢 지금 <b id="online-n">0</b>명 접속 중</div>
@@ -176,14 +182,16 @@
     </div>
 
     <ul class="rules">
-      <li>🙋 <b>혼자 하기</b> : 5문제, 하나라도 틀리면 바로 탈락! 갈수록 어려워져요.</li>
+      <li>🙋 <b>혼자 하기</b> : 5문제, 하나라도 틀리면 바로 탈락! 문제는 매번 랜덤으로 나와요.</li>
       <li>⚔️ <b>친구랑 대결</b> : 한 기기를 돌려가며 한 문제씩! 틀리면 <b>벌칙 당첨</b> 🎯 (한 명이 틀려도 한 바퀴는 끝까지 돌아요)</li>
     </ul>
 
     <button class="btn" id="btn-solo">🙋 혼자 하기</button>
     <button class="btn friend" id="btn-friend">⚔️ 친구랑 대결</button>
-    <button class="btn ghost" id="btn-garden">🌱 내 화분 키우기 (회원)</button>
-    <button class="btn submit js-meme">🖼️ 밈 짤 추가하기</button>
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-garden">🌱 내 화분</button>
+      <button class="btn submit js-meme">🖼️ 밈 짤 추가</button>
+    </div>
     <button class="btn ghost hidden" id="btn-install">📲 홈 화면에 게임 추가</button>
   </section>
 
@@ -344,6 +352,7 @@
 <script>
 /* ============ 설정 ============ */
 const CONFIG = {
+  RANDOM_ALL: true,           // true면 난이도 구분 없이 전체 문제에서 랜덤 출제 (false면 1~5단계 순서대로)
   IMAGE_FIRST: 0.8,           // 이미지 문제가 있을 때 먼저 뽑을 확률(0~1)
   COUNT_FILES: {},            // 카운트다운 녹음 파일 (비우면 비프음)
   QUESTIONS_PER_GAME: 5,     // 혼자 하기 문제 수
@@ -627,8 +636,9 @@ function saveSeen(set){
   try{ localStorage.setItem("meme_seen", JSON.stringify([...set].slice(-1000))); }catch(e){}
 }
 function pickQuestion(level, used){
-  let all = BANK.filter(x=>x.l===level && !x.pending && (!CONFIG.ONLY_CROSS_CHECKED || x.c===1));
-  if(!all.length) all = BANK.filter(x=>x.l===level && !x.pending);   // 교차확인 문제가 없는 난이도는 전체에서 출제
+  const lvOk = x => CONFIG.RANDOM_ALL || x.l===level;
+  let all = BANK.filter(x=>lvOk(x) && !x.pending && (!CONFIG.ONLY_CROSS_CHECKED || x.c===1));
+  if(!all.length) all = BANK.filter(x=>lvOk(x) && !x.pending);   // 교차확인 문제가 없는 난이도는 전체에서 출제
   // 이 기기에서 이미 나왔던 문제는 다 돌 때까지 다시 안 나오게 기억해요 (게임이 바뀌어도 유지)
   const seen = loadSeen();
   let pool = all.filter(x=>!used.has(x.q) && !seen.has(x.q));
@@ -852,7 +862,7 @@ function showTurn(){
   const lv = partyLevel();
   $("turn-round").textContent = `${game.round}라운드 · ${game.turn+1} / ${game.players.length}번째`;
   $("turn-name").textContent = p.name;
-  $("turn-level").textContent = `난이도 ${"★".repeat(lv)}${"☆".repeat(5-lv)}`;
+  $("turn-level").textContent = CONFIG.RANDOM_ALL ? "🎲 문제는 랜덤!" : `난이도 ${"★".repeat(lv)}${"☆".repeat(5-lv)}`;
   show("turn");
 }
 
@@ -894,7 +904,7 @@ function showSummary(){
     });
     body.appendChild(tr);
   });
-  $("btn-nextround").textContent = game.round < 5 ? "다음 라운드 (난이도 ↑)" : "다음 라운드";
+  $("btn-nextround").textContent = (!CONFIG.RANDOM_ALL && game.round < 5) ? "다음 라운드 (난이도 ↑)" : "다음 라운드";
   shareMsg = `밈잘알? 친구 대결 ${game.round}라운드 결과!\n` + (losers.length ? `🎯 벌칙 당첨: ${losers.join(", ")}` : "🎉 전원 통과!") + "\n너도 5초 안에 도전해 봐!";
   show("summary");
 }
