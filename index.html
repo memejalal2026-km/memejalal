@@ -24,6 +24,7 @@
 <!-- 도트(픽셀) 한글 폰트: Galmuri (OFL 라이선스). 로드에 실패해도 기본 글꼴로 정상 동작해요 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
 <script src="https://t1.kakaocdn.net/kakaojs/2.7.2/kakao.min.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" async></script>
 <style>
   :root{
     --bg:#fff7d6; --card:#ffffff; --ink:#2b1d6e; --main:#6c4cf1; --main-d:#5337cc;
@@ -389,6 +390,8 @@ const CONFIG = {
   QUESTIONS_API: "https://script.google.com/macros/s/AKfycbwuercKz9YRoVCcHv6VXk0Xpr_nEycmMQus8d7_4RyDTKcs2uc_LPyOp9x9bVoced-M/exec",         // Apps Script 웹앱 주소 (승인된 문제를 불러옴). 비우면 기본 문제만 사용
   SUBMIT_URL: "https://docs.google.com/forms/d/e/1FAIpQLSfvSqCA7PyjRksp-rrRitq0IVFPkzDjehFIl9Hdb3LuyMKxGw/viewform",            // '문제 내기' 접수 링크 (예: 구글폼 주소). 비워두면 '준비 중' 안내가 떠요
   SHOW_AD: false,            // 유저가 늘어나 광고를 붙일 때 true로 바꾸고 #ad 안에 광고 코드를 넣으세요
+  SUPABASE_URL: "https://ojypsuwtldrjvxzzwklg.supabase.co",   // 회원·랭킹 서버(Supabase) 주소. 비우면 이 기기에만 저장돼요
+  SUPABASE_KEY: "sb_publishable__aUxiX2J2oITa3OHelZwsQ_3-NSoYtg",  // 공개용 키(노출돼도 안전)
   KAKAO_JS_KEY: "",          // 카카오 개발자 사이트에서 발급받은 JavaScript 키를 넣으세요
   SHARE_URL: location.href.split("?")[0].split("#")[0]
 };
@@ -1359,7 +1362,36 @@ async function hashPw(nick,pw){
   }catch(e){ let h=5381; for(const ch of txt) h=((h<<5)+h+ch.charCodeAt(0))|0; return "x"+h; }
 }
 function me(){ const u=loadUsers(), n=getMe(); return (n&&u[n])?{nick:n,data:u[n]}:null; }
-function updateMe(fn){ const u=loadUsers(), n=getMe(); if(!u[n]) return; fn(u[n]); saveUsers(u); }
+function updateMe(fn){ const u=loadUsers(), n=getMe(); if(!u[n]) return; fn(u[n]); saveUsers(u); syncMe(); }
+
+/* --- 서버(Supabase) 연결: 실패해도 이 기기 저장으로 계속 동작해요 --- */
+let _sb=null;
+function sbc(){
+  if(_sb) return _sb;
+  try{ if(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_KEY && window.supabase) _sb=window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY, {auth:{storageKey:"mj-sb-auth"}}); }catch(e){}
+  return _sb;
+}
+function sbEmail(nick){ return "u"+[...new TextEncoder().encode(nick)].map(x=>x.toString(16).padStart(2,"0")).join("")+"@memejalal.kr"; }
+function sbPw(pw){ return "mj-"+pw; }
+function sbNet(err){ return !err || !err.status || err.status>=500 || /fetch|network|retry/i.test((err.name||"")+" "+(err.message||"")); }
+let _syncT=null;
+function syncMe(){
+  clearTimeout(_syncT);
+  _syncT=setTimeout(async()=>{
+    try{
+      const c=sbc(); const m=me(); if(!c||!m) return;
+      const r=await c.auth.getSession(); const ses=r&&r.data&&r.data.session; if(!ses) return;
+      const d=m.data;
+      await c.from("profiles").update({plants:(d.coll||[]).length, pot_step:d.pot?(d.pot.step||0):0, data:{coll:d.coll||[], pot:d.pot||null}, last_seen:new Date().toISOString()}).eq("id",ses.user.id);
+    }catch(e){}
+  },1500);
+}
+function mergeRemote(local, remote){
+  const seen=new Set(), coll=[];
+  (local.coll||[]).concat((remote&&remote.coll)||[]).forEach(x=>{ const k=JSON.stringify(x); if(!seen.has(k)){ seen.add(k); coll.push(x); } });
+  const a=local.pot, b=remote&&remote.pot;
+  local.coll=coll; local.pot=(a&&b)?((b.step||0)>(a.step||0)?b:a):(a||b||null);
+}
 
 /* --- 회원가입 / 로그인 --- */
 async function doAuth(signup){
@@ -1367,16 +1399,52 @@ async function doAuth(signup){
   if(nick.length<2||nick.length>10){ toast("닉네임은 2~10자로 적어 주세요"); return; }
   if(pw.length<4){ toast("비밀번호는 4자 이상이에요"); return; }
   const u=loadUsers(), h=await hashPw(nick,pw);
+  let remote=null, created=false;          /* remote: 서버에서 받은 {coll,pot} */
+  const c=sbc();
+  if(c){
+    try{
+      if(signup){
+        const r=await c.auth.signUp({email:sbEmail(nick), password:sbPw(pw)});
+        if(r.error){
+          if(/registered|exists/i.test(r.error.message||"")){ toast("이미 있는 닉네임이에요"); return; }
+          throw r.error;
+        }
+        if(r.data&&r.data.session){ await c.from("profiles").insert({id:r.data.user.id, nickname:nick}); created=true; }
+      }else{
+        const r=await c.auth.signInWithPassword({email:sbEmail(nick), password:sbPw(pw)});
+        if(r.error){
+          if(!sbNet(r.error)){
+            if(u[nick]&&u[nick].h===h){            /* 예전에 이 기기에서만 만든 회원 → 서버로 옮기기 */
+              const r2=await c.auth.signUp({email:sbEmail(nick), password:sbPw(pw)});
+              if(!r2.error&&r2.data&&r2.data.session){ await c.from("profiles").insert({id:r2.data.user.id, nickname:nick}); created=true; }
+              else { toast("닉네임이나 비밀번호가 달라요"); return; }
+            }else{ toast("닉네임이나 비밀번호가 달라요"); return; }
+          }else throw r.error;
+        }else{
+          const p=await c.from("profiles").select("data").eq("id",r.data.user.id).maybeSingle();
+          remote=(p&&p.data&&p.data.data)||{};
+          if(p&&!p.data){ await c.from("profiles").insert({id:r.data.user.id, nickname:nick}); }
+        }
+      }
+    }catch(err){ remote=null; created=false; if(!sbNet(err)) { toast("서버 오류예요. 잠시 후 다시 해 주세요"); return; } }
+  }
+  const online=!!(remote||created);
   if(signup){
-    if(u[nick]){ toast("이미 있는 닉네임이에요"); return; }
-    u[nick]={h, pot:null, coll:[]};
+    if(!online&&u[nick]){ toast("이미 있는 닉네임이에요"); return; }
+    if(!u[nick]) u[nick]={h, pot:null, coll:[]}; else u[nick].h=h;
     if(!saveUsers(u)) return;
     setMe(nick); toast("가입 완료! 씨앗을 골라 보세요 🌱");
   }else{
-    if(!u[nick]||u[nick].h!==h){ toast("닉네임이나 비밀번호가 달라요"); return; }
+    if(!online){
+      if(!u[nick]||u[nick].h!==h){ toast("닉네임이나 비밀번호가 달라요"); return; }
+    }else{
+      if(!u[nick]) u[nick]={h, pot:null, coll:[]};
+      u[nick].h=h; if(remote) mergeRemote(u[nick], remote);
+      saveUsers(u);
+    }
     setMe(nick); toast(nick+"님 어서 와요!");
   }
-  $("m-pw").value=""; logMember(); openGarden();
+  $("m-pw").value=""; logMember(); syncMe(); openGarden();
 }
 $("m-login").onclick=()=>doAuth(false);
 $("m-signup").onclick=()=>doAuth(true);
@@ -1445,7 +1513,7 @@ $("g-keep").onclick=()=>{
   toast("컬렉션에 보관했어요! 🏆"); renderGarden();
 };
 $("g-play").onclick=startSolo;
-$("g-logout").onclick=()=>{ setMe(""); toast("로그아웃했어요"); show("start"); };
+$("g-logout").onclick=()=>{ try{ const c=sbc(); if(c) c.auth.signOut(); }catch(e){} setMe(""); toast("로그아웃했어요"); show("start"); };
 $("g-back").onclick=()=>show("start");
 $("btn-garden").onclick=openGarden;
 function refreshJoin(){ const m=me(); $("btn-join").textContent = m ? "👤 "+m.nick : "👤 회원가입"; }
