@@ -120,6 +120,7 @@
   .sprite svg{display:block}
   .qsrc{text-align:center;font-size:11px;color:#9a9aa6;margin:-4px 0 8px}
   .qimgwrap{text-align:center;margin-bottom:12px}
+  .qimgwrap img.tall{max-height:340px}
   .qimgwrap img{max-width:100%;max-height:200px;border:3px solid var(--ink);background:#fff}
   /* 결과 */
   .score{font-size:44px;font-weight:700;text-align:center;color:var(--main);margin:4px 0}
@@ -572,6 +573,7 @@ const BANK = [
   {"id":"Q300","l":2,"t":"이미지밈","q":"이 장면에서 나온 대사는?","o":["어디서 나물을 캐냐고","어디서 나물을 사냐고","어디서 나물을 먹냐고","어디서 나물을 파냐고"],"a":3,"c":0,"img":"img/cards/c_mu48.png","s":"밈 짤 48","raw":"img/raw/c01.jpg","rq":"이 장면에서 나온 대사는?","rs":"코미디빅리그 <이지와 뽈롤로> (유튜브 2025.8.6)","ro":["어디서 나물을 캐냐고","어디서 나물을 사냐고","어디서 나물을 먹냐고","어디서 나물을 파냐고"]},
   {"id":"Q301","l":2,"t":"이미지밈","q":"이 장면에서 문세윤이 한 말은?","o":["맛남","맛있네","맛없네","짜네"],"a":0,"c":0,"img":"img/cards/c_mu49.png","s":"밈 짤 49","raw":"img/raw/c02.jpg","rq":"이 장면에서 문세윤이 한 말은?","rs":"코미디빅리그 <이지와 뽈롤로> (유튜브 2025.8.6)","ro":["맛남","맛있네","맛없네","짜네"]},
   {"id":"Q302","l":2,"t":"이미지밈","q":"이 표정에서 문세윤이 한 말은?","o":["맛나네","맛남","맛없다","먹었다"],"a":1,"c":0,"img":"img/cards/c_mu50.png","s":"밈 짤 50","raw":"img/raw/c03.jpg","rq":"이 표정에서 문세윤이 한 말은?","rs":"코미디빅리그 <이지와 뽈롤로> (유튜브 2025.8.6)","ro":["맛나네","맛남","맛없다","먹었다"]},
+  {"id":"Q303","l":2,"t":"이미지밈","q":"무대를 못하게 했을 때 신인 걸그룹의 반응, 가려진 자막은?","o":["5분만요","10분만요","1분만요","한번만요"],"a":2,"c":0,"img":"img/cards/c_mu51.png","s":"밈 짤 51","raw":"img/raw/d01.jpg","rq":"무대를 못하게 했을 때 신인 걸그룹의 반응, 가려진 자막은?","rs":"리센느 미나미 직캠 영상","ro":["5분만요","10분만요","1분만요","한번만요"]},
   // Lv3
   {"id":"Q017","l":3,"t":"유래","q":"'장항준적 사고'의 핵심 태도는?","o":["내 행복 우선","완벽 추구","계획 철저","일찍 기상"],"a":0,"c":1},
   {"id":"Q018","l":3,"t":"챌린지","q":"'윤정아~ 왜요쌤~' 챌린지의 원조 콩트 배경은?","o":["수학 학원","피아노 학원","태권도장","미용실"],"a":1,"c":1},
@@ -985,7 +987,7 @@ function showQuestion(q, label, limit, done){
   if(q.img){   // 이미지 문제: 그림이 뜬 뒤에 카운트 시작 (최대 3초 대기)
     $("tnum").textContent = limit; $("tnum").classList.remove("danger");
     wrap.classList.remove("hidden");
-    im.onload = im.onerror = begin;
+    im.onload = ()=>{ im.classList.toggle('tall', im.naturalHeight > im.naturalWidth*1.2); begin(); }; im.onerror = begin;
     im.src = q.img;
     setTimeout(begin, 3000);
   }else{
