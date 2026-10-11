@@ -19,9 +19,9 @@ CATS = [
 data = {c[0]:[] for c in CATS}
 for r in rows:
     id_,lv,cat,q,o1,o2,o3,o4,a,ex,src,conf,img,status,memo = (r+[""]*15)[:15]
-    if img or cat not in data or not ex: continue
+    if (img and not img.startswith("img/cards/")) or cat not in data or not ex: continue
     ans = [o1,o2,o3,o4][int(a)-1]
-    data[cat].append((id_,q,ans,ex,src))
+    data[cat].append((id_,q,ans,ex,src,img))
 
 def page(title, desc, body, canon):
     return f'''<!DOCTYPE html>
@@ -52,11 +52,12 @@ os.makedirs(os.path.join(ROOT,"dict"),exist_ok=True)
 open(os.path.join(ROOT,"dict","index.html"),"w",encoding="utf-8").write(page("밈 사전 - 밈과 신조어 뜻 모음", f"밈과 신조어 {total}개의 뜻과 유래를 정리한 밈잘알? 밈 사전", idx, ""))
 for cat,slug,title,intro in CATS:
     b = f'<div class="box"><h1>{E(title)}</h1><p>{E(intro)}</p><p class="sub">총 {len(data[cat])}개 항목 · 아래 문제의 정답은 <b>정답</b> 칸에 있어요. 게임에서 먼저 풀어 보고 싶다면 <a href="/">게임하기</a>를 눌러 주세요.</p>{nav(slug)}'
-    for id_,q,ans,ex,src in data[cat]:
+    for id_,q,ans,ex,src,img in data[cat]:
         s = ""
         if src.startswith("http"):
             s = f'<p class="src">참고: <a href="{E(src)}" target="_blank" rel="noopener nofollow">{E(urlparse(src).netloc)}</a></p>'
-        b += f'<div class="entry"><h3>{E(q)}</h3><div class="ans"><b>정답</b> {E(ans)}</div><p>{E(ex)}</p>{s}</div>'
+        im = f'<p><img src="/{E(img)}" alt="{E(ans)} 설명 그림" loading="lazy" style="max-width:100%;border:3px solid var(--ink)"></p>' if img else ""
+        b += f'<div class="entry"><h3>{E(q)}</h3>{im}<div class="ans"><b>정답</b> {E(ans)}</div><p>{E(ex)}</p>{s}</div>'
     b += "</div>"
     open(os.path.join(ROOT,"dict",slug+".html"),"w",encoding="utf-8").write(page(title, intro[:90], b, slug))
 print("OK", {c[0]:len(data[c[0]]) for c in CATS}, total)
