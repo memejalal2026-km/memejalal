@@ -56,6 +56,8 @@
   .blink{animation:blink 1.2s steps(2) infinite;color:var(--main);font-weight:700;margin-bottom:0}
   .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .btn-row .btn{padding:12px 6px;font-size:15px}
+  .streak{margin:10px 0;padding:10px 12px;border:3px solid var(--ink);background:#fff3c4;font-weight:800;font-size:14px;line-height:1.5;text-align:center}
+  .streak b{color:var(--fight)}
   .btn-row.modes .btn{padding:18px 6px;font-size:17px}
   @keyframes bob{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
   @keyframes blink{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
@@ -288,6 +290,7 @@
     <div class="title" id="r-title"></div>
     <div class="score" id="r-score"></div>
     <p class="ment" id="r-ment"></p>
+    <div class="streak" id="r-streak"></div>
     <div class="gbox" id="r-garden"></div>
     <div class="share-row">
       <button class="kakao js-kakao">카카오톡</button>
@@ -909,6 +912,27 @@ function soloQuestion(){
   });
 }
 
+/* ===== 연속 만점 기록 (이 기기 기준) ===== */
+function updateStreak(score){
+  let d = {cur:0, best:0};
+  try{ d = Object.assign(d, JSON.parse(localStorage.getItem("meme_streak")||"{}")); }catch(e){}
+  const full = score >= CONFIG.QUESTIONS_PER_GAME, prev = d.cur, prevBest = d.best;
+  d.cur = full ? d.cur+1 : 0;
+  const newBest = d.cur > prevBest;
+  if(newBest) d.best = d.cur;
+  try{ localStorage.setItem("meme_streak", JSON.stringify(d)); }catch(e){}
+  let html;
+  if(full){
+    html = `🔥 연속 만점 <b>${d.cur}회</b>` + (newBest && d.cur>=2 ? ` · 🏅 <b>신기록!</b>` : ` · 최고 ${d.best}회`)
+         + `<br>${d.cur===1 ? "첫 만점! 한 번 더 만점이면 연속 2회!" : (newBest ? "아무도 못 말리는 밈잘알! 계속 이어 가 볼까요?" : `신기록까지 ${d.best-d.cur+1}번 더!`)}`;
+  }else if(prev>=1){
+    html = `💥 연속 만점 <b>${prev}회</b>에서 멈췄어요!<br>최고 기록 ${d.best}회 — 다시 도전해서 되찾아요!`;
+  }else{
+    const left = CONFIG.QUESTIONS_PER_GAME - score;
+    html = `🎯 만점까지 <b>${left}문제</b> 남았어요!` + (d.best>0 ? `<br>내 최고 연속 만점: ${d.best}회` : `<br>만점을 연속으로 쌓아 기록에 도전해 보세요!`);
+  }
+  return {cur:d.cur, best:d.best, html};
+}
 function soloFinish(){
   const r = RESULTS[game.score];
   drawSprite($("r-sprite"), rand(game.score>=3 ? SPRITES_OK : SPRITES_NG));
@@ -917,6 +941,9 @@ function soloFinish(){
   $("r-ment").textContent = r.m;
   shareMsg = `밈잘알? ${game.score}/${CONFIG.QUESTIONS_PER_GAME} - ${r.t} ${r.e}\n너도 5초 안에 도전해 봐!`;
   logEvent("solo_finish", game.score);
+  const st = updateStreak(game.score);
+  $("r-streak").innerHTML = st.html;
+  if(st.cur>=2) shareMsg += `\n🔥 연속 만점 ${st.cur}회 중! 내 기록 깰 수 있어?`;
   if(window.afterSolo) afterSolo();
   show("result");
 }
