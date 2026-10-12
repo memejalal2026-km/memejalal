@@ -1338,57 +1338,217 @@ const SEEDS = [
   {k:"blueberry",n:"블루베리",   t:"fruit",  c:"#4a5fd6", m:"#a9b8ff"},
   {k:"strawberry",n:"스트로베리", t:"fruit", c:"#ff3b4e", m:"#ffe66d"}
 ];
-const STAGES = ["씨앗이 흙 속에 있어요 (아직 새싹이 나오지 않았어요)","새싹이 빼꼼!","새싹이 쑥쑥","줄기가 자라요","줄기가 튼튼해져요","잎이 나요","잎이 무성해져요","꽃봉오리·열매가 맺혀요","꽃이 피고 열매가 익어가요","거의 다 컸어요!"];
+const stageText = step => step<=10?"씨앗이 흙 속에 있어요 (곧 새싹이 나와요)" : step<=25?"새싹이 빼꼼! (1단계)" : step<=50?"쑥쑥 자라는 중 (2단계)" : step<=75?"꽃봉오리·열매가 맺혀요 (3단계)" : step<=99?"거의 다 컸어요! (4단계)" : "완성! (5단계)";
 const POTS = [["#c97b4a","#a35d33"],["#d9904f","#b36c35"],["#e0a35a","#b87d3a"],["#6fb5e8","#4a8fc2"],["#5fc9a0","#3ea07c"],["#f08fb0","#c96a8c"],["#b08af0","#8a63c9"],["#ffd23f","#d6a91c"],["#ff8a5c","#d2643a"],["#f3f0ff","#b9b2d9"]];
 const stageOf = step => Math.min(9, Math.floor((Math.max(1,step)-1)/10));
 
-function plantSVG(seed, step, px){
-  const W=16,H=20, g=Array.from({length:H},()=>Array(W).fill(null));
-  const put=(x,y,c)=>{ if(x>=0&&x<W&&y>=0&&y<H) g[y][x]=c; };
-  const b=stageOf(step), pot=POTS[b], K="#2b1d6e";
-  // 화분
-  for(let x=3;x<=12;x++) put(x,14,pot[0]);
-  for(let y=15;y<=18;y++) for(let x=4;x<=11;x++) put(x,y,(x===4||x===11)?pot[1]:pot[0]);
-  for(let x=5;x<=10;x++) put(x,19,pot[1]);
-  for(let x=4;x<=11;x++) put(x,13,"#6b4a2b");
-  if(step<=0) return svgOf(g,W,H,px);
-  const LG="#4cc36a", DG="#2e8f4a";
-  const h=[0,2,3,5,6,8,9,10,10,10][b], topY=13-h;
-  if(b===0){ put(8,13,"#e8d49a"); }
-  for(let y=12;y>=topY && h>0;y--) put(8,y,DG);
-  const pairs=[0,1,1,2,2,3,4,4,4,4][b];
-  for(let i=1;i<=pairs;i++){ const y=12-2*i; put(7,y,LG);put(6,y-1,LG);put(9,y,LG);put(10,y-1,LG); }
-  if(b===1||b===2) { put(7,topY,LG); put(9,topY,LG); }
-  const sd=seed||SEEDS[0];
-  if(b>=7){
-    const cy=topY-2;
-    if(sd.t==="flower"){
-      if(b===7){ put(8,topY-1,sd.c); put(8,topY-2,sd.c); }
-      else{
-        const R=b===8?1:2;
-        for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){ if(Math.abs(dx)+Math.abs(dy)<=R) put(8+dx,cy+dy,sd.c); }
-        put(8,cy,sd.m);
-        if(b===9){ put(8,cy-3,sd.c); }
-      }
-    }else if(sd.t==="clover"){
-      if(b===7) put(8,topY-1,sd.c);
-      else if(b===8){ put(7,topY-1,sd.c);put(9,topY-1,sd.c);put(8,topY-2,sd.c); }
-      else{ [[7,topY-2],[9,topY-2],[7,topY],[9,topY]].forEach(([x,y])=>{put(x,y,sd.c);put(x+(x<8?-1:1),y,sd.c);}); put(8,topY-1,sd.m); }
-    }else{
-      const spots=[[6,topY+1],[10,topY+2],[7,topY+4],[10,topY+5]];
-      const n=b===7?1:(b===8?2:4);
-      for(let i=0;i<n;i++){ const [x,y]=spots[i]; const col=b===7?"#9ad66f":sd.c;
-        put(x,y,col); if(b===9){ put(x+1,y,col);put(x,y+1,col);put(x+1,y+1,col); put(x,y,sd.m); } }
+/* 화분 시안 v2: 1~4단계(화분) + 5단계(결과물 크게, 화분 없음) */
+(function(){
+const INK="#2b1d6e";
+const LF=["#4cc36a","#86e29a","#2a8f48"], LF2=["#2f9a4f","#5cc277","#1d6e37"], TRK=["#8a5a2b","#b07a45","#5e3b1a"];
+const POTC=[["#d9904f","#b36c35"],["#6fb5e8","#4a8fc2"],["#5fc9a0","#3ea07c"],["#ffd23f","#d6a91c"]];
+
+function G(W,H){
+  const g=Array.from({length:H},()=>Array(W).fill(null)), o={g,W,H};
+  o.put=(x,y,c)=>{x=Math.round(x);y=Math.round(y);if(c&&x>=0&&x<W&&y>=0&&y<H)g[y][x]=c;};
+  o.rect=(x0,y0,x1,y1,c)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)o.put(x,y,c);};
+  o.ell=(cx,cy,rx,ry,P,hl)=>{
+    for(let y=Math.floor(cy-ry)-1;y<=Math.ceil(cy+ry)+1;y++)for(let x=Math.floor(cx-rx)-1;x<=Math.ceil(cx+rx)+1;x++){
+      const ux=(x-cx)/rx,uy=(y-cy)/ry; if(ux*ux+uy*uy>1) continue;
+      const t=-0.6*ux-0.8*uy; o.put(x,y,t>0.5?P[1]:(t<-0.35?P[2]:P[0]));
     }
-  }
-  if(step>=100){ [[2,2],[13,3],[3,8],[13,9],[1,5]].forEach(([x,y])=>{put(x,y,"#ffd23f");put(x+1,y,"#fff3b0");}); }
-  return svgOf(g,W,H,px);
+    if(hl&&rx>=2&&ry>=2){ o.put(cx-rx*0.45,cy-ry*0.5,hl); if(rx>=3.5) o.put(cx-rx*0.45+1,cy-ry*0.5,hl); }
+  };
+  o.ball=(cx,cy,r,P,hl)=>o.ell(cx,cy,r,r,P,hl);
+  o.line=(x0,y0,x1,y1,c)=>{const n=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))*2||1;for(let i=0;i<=n;i++)o.put(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n,c);};
+  o.outline=(c)=>{const add=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(g[y][x])continue;
+    if((y>0&&g[y-1][x])||(y<H-1&&g[y+1][x])||(x>0&&g[y][x-1])||(x<W-1&&g[y][x+1]))add.push([x,y]);}add.forEach(([x,y])=>g[y][x]=c);};
+  return o;
 }
-function svgOf(g,W,H,px){
-  const size=px||128;
+function svg(o,px){
+  const W=o.W,H=o.H,size=px||128;
   let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${size}" height="${size*H/W}" shape-rendering="crispEdges">`;
-  g.forEach((row,y)=>row.forEach((c,x)=>{ if(c) s+=`<rect x="${x}" y="${y}" width="1" height="1" fill="${c}"/>`; }));
+  o.g.forEach((r,y)=>r.forEach((c,x)=>{if(c)s+=`<rect x="${x}" y="${y}" width="1" height="1" fill="${c}"/>`;}));
   return s+"</svg>";
+}
+const hh=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%100;
+function leaf(o,x,y,dir,len,P){ o.ell(x+dir*(len/2+0.5),y-len*0.15,len/2+0.8,1.6,P); o.line(x+dir*0.5,y,x+dir*len,y-len*0.3,P[1]); }
+
+/* ---------- 화분 ---------- */
+function pot(o,c){
+  o.rect(6,24,18,24,"#6b4a2b"); [8,11,14,16].forEach(x=>o.put(x,24,"#8a6a45"));
+  o.rect(5,25,19,25,c[0]); o.rect(5,26,19,26,c[1]);
+  o.rect(6,27,18,28,c[0]); o.rect(7,29,17,30,c[0]); o.rect(8,31,16,31,c[1]);
+  for(let y=27;y<=31;y++){o.put(y<29?6:(y<31?7:8),y,c[1]);o.put(y<29?18:(y<31?17:16),y,c[1]);}
+  o.rect(8,27,8,29,"rgba(255,255,255,.35)");
+}
+
+/* ---------- 열매/꽃 (작게, 화분용) ---------- */
+function fruit(o,x,y,k){
+  if(k==="apple"){ o.ball(x,y,2.4,["#e8344f","#ff6b7e","#a91530"],"#fff"); o.put(x,y-3,TRK[0]); o.put(x+1,y-3,"#4cc36a"); }
+  else if(k==="persim"){ o.ell(x,y,3,2.3,["#ff8a1f","#ffc27a","#d96a0a"],"#fff3d0"); o.rect(x-1,y-2,x+1,y-2,"#3a9a3a"); o.put(x,y-3,TRK[0]); }
+  else if(k==="pear"){ const P=["#c9d94a","#eef27a","#9fb22d"]; o.ball(x,y-1.6,1.5,P); o.ball(x,y+0.8,2.5,P,"#fff"); o.put(x,y-4,TRK[0]); }
+  else if(k==="avocado"){ const P=["#8cc65a","#bfe88f","#4a7d2a"]; o.ball(x,y-1.7,1.5,P); o.ball(x,y+0.9,2.6,P,"#f2ffd0"); o.put(x,y-4,TRK[0]); }
+  else if(k==="cherry"){ const P=["#d6203c","#ff6a7e","#9e1229"]; o.line(x,y-3,x-2,y,"#5aa05a"); o.line(x,y-3,x+2,y,"#5aa05a"); o.ball(x-2,y+1.2,1.7,P,"#fff"); o.ball(x+2,y+1.2,1.7,P,"#fff"); }
+}
+function blossom(o,x,y,col){ o.put(x,y,col||"#fff"); o.put(x+1,y,col||"#fff"); o.put(x,y+1,col||"#fff"); o.put(x+1,y+1,"#ff9aa8"); }
+
+/* ---------- 꽃 머리 (s=크기) ---------- */
+const HEAD={
+  peony(o,cx,cy,s){ const P1=["#f77fae","#ffa6c9","#d9588f"],P2=["#ff8fb8","#ffc0da","#e0679c"],P3=["#ffb3d1","#ffe0ee","#f08ab5"];
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;o.ball(cx+Math.cos(a)*5*s,cy+Math.sin(a)*4.5*s,3*s,P1);}
+    for(let i=0;i<6;i++){const a=i*Math.PI/3+0.5;o.ball(cx+Math.cos(a)*3*s,cy+Math.sin(a)*2.8*s,2.3*s,P2);}
+    for(let i=0;i<4;i++){const a=i*Math.PI/2+0.2;o.ball(cx+Math.cos(a)*1.4*s,cy+Math.sin(a)*1.4*s,1.8*s,P3);}
+    o.ball(cx,cy,1.3*s,["#ffd23f","#fff3b0","#e0a31c"]); },
+  hydra(o,cx,cy,s){ const C=["#5f86ff","#7ea6ff","#9db8ff","#8a7bff","#b4a2ff"], rx=8*s, ry=6.5*s;
+    for(let dy=-ry;dy<=ry;dy+=3)for(let dx=-rx;dx<=rx;dx+=3){ const off=(Math.round(dy/3)%2)?1.5:0, x=dx+off, y=dy; if((x*x)/(rx*rx)+(y*y)/(ry*ry)>1) continue;
+      const px=Math.round(cx+x),py=Math.round(cy+y),c=C[hh(px,py)%5]; o.put(px,py,"#e6edff"); o.put(px-1,py,c);o.put(px+1,py,c);o.put(px,py-1,c);o.put(px,py+1,c); } },
+  rose(o,cx,cy,s){ const P=["#e8344f","#ff6b80","#a91530"];
+    o.ball(cx,cy,5.5*s,P); o.ball(cx-2.5*s,cy-0.5*s,3.4*s,["#f04860","#ff8696","#b81b36"]); o.ball(cx+2.6*s,cy-0.3*s,3.4*s,["#f04860","#ff8696","#b81b36"]);
+    o.ball(cx,cy-2.5*s,3.4*s,["#ff6b80","#ffa3b0","#cc2a45"]);
+    const sp=[[0,-2],[1,-2],[2,-1],[2,0],[1,1],[0,1],[-1,0],[-1,-1]]; sp.forEach(([x,y])=>o.put(cx+x*s*1.2,cy+y*s*1.2,"#8c1128")); o.put(cx,cy,"#ffb3c0");
+    for(let a=0.3;a<2.7;a+=0.12) o.put(cx+Math.cos(a)*3.6*s,cy+Math.sin(a)*3.4*s,"#8c1128");
+    for(let a=3.6;a<5.9;a+=0.12) o.put(cx+Math.cos(a)*2.4*s,cy+Math.sin(a)*2.4*s,"#8c1128"); },
+  marigold(o,cx,cy,s){ for(let i=0;i<10;i++){const a=i*Math.PI/5;o.ball(cx+Math.cos(a)*5.2*s,cy+Math.sin(a)*5.2*s,2.3*s,i%2?["#ff9f1c","#ffc65a","#d9780a"]:["#ffb52e","#ffd77a","#e08a10"]);}
+    for(let i=0;i<8;i++){const a=i*Math.PI/4+0.3;o.ball(cx+Math.cos(a)*3.2*s,cy+Math.sin(a)*3.2*s,2.2*s,["#ffa91f","#ffcb6a","#d9780a"]);}
+    for(let i=0;i<16;i+=1){const a=i*Math.PI/8;for(let r=2.4;r<=6.6*s+1;r+=0.5){ if(i%2===0) o.put(cx+Math.cos(a)*r*(s>0.8?1:0.9),cy+Math.sin(a)*r*(s>0.8?1:0.9),"#d9780a"); }}
+    o.ball(cx,cy,2.2*s,["#e07b00","#ff9a2e","#a85500"]); },
+  sun(o,cx,cy,s){ for(let i=0;i<16;i++){const a=i*Math.PI/8;for(let r=4.8;r<=9.2;r+=0.7){const px=cx+Math.cos(a)*r*s,py=cy+Math.sin(a)*r*s;o.put(px,py,i%2?"#ffd23f":"#ffb703");if(r<7.5){o.put(px+(Math.abs(Math.cos(a))>0.7?0:1),py+(Math.abs(Math.cos(a))>0.7?1:0),i%2?"#ffd23f":"#ffb703");}}}
+    o.ball(cx,cy,5*s,["#5b3418","#7a4a24","#3a200e"]);
+    for(let y=-5;y<=5;y++)for(let x=-5;x<=5;x++){if(x*x+y*y<=(4.2*4.2)&&(x+y*2)%3===0)o.put(cx+x*s,cy+y*s,"#a8743c");} }
+};
+
+/* ---------- 성장 단계 (1~4, 화분) ---------- */
+function sprout(o,wood){ o.line(12,23,12,20,wood?TRK[0]:"#2e8f4a"); leaf(o,12,21,-1,3,LF); leaf(o,12,20,1,3,LF); }
+const TD={
+ apple:{pal:LF,top:15,sh:[[6.5,12,4.5,4.5],[17.5,12,4.5,4.5],[12,6.5,6.2,6.2],[12,11.5,6,6],[8,6,3.3,3.3],[16,6,3.3,3.3]],fr:[[7,13],[17,12],[12,15],[10,8],[15,7],[12,10]]},
+ cherry:{pal:["#5fd07a","#9af0ad","#3aa557"],top:16,sh:[[7,11,4.2,3.8],[17,11,4.2,3.8],[12,6.5,5.5,4.6],[12,11,5.5,4.5],[5,7,2.8,2.4],[19,7,2.8,2.4]],fr:[[7,14],[17,14],[12,14.5],[9,9],[15,8]]},
+ persim:{pal:["#3a9a45","#6cc27a","#26742f"],top:14,sh:[[5.5,11,4.5,3.6],[18.5,11,4.5,3.6],[12,8,6.5,4.5],[12,11,7,4.8],[8,7,3.8,3],[16,7,3.8,3]],fr:[[5,12],[19,11],[12,14],[9,8],[15,8],[12,10]]},
+ pear:{pal:["#7fd06a","#b5ee8a","#4fa04a"],top:17,sh:[[12,4.5,4,3.5],[12,9,5.2,5],[8.5,12.5,3.8,4],[15.5,12.5,3.8,4],[12,14,4.5,3.5]],fr:[[8,12],[16,12],[12,14],[10,7],[14,8]]},
+ avocado:{pal:["#2a7a40","#4fb06a","#175230"],top:15,sh:[[12,4,3,4],[6.5,9,4.5,2.8],[17.5,9,4.5,2.8],[12,10.5,6.8,3.3],[7.5,13.5,4.3,2.5],[16.5,13.5,4.3,2.5],[12,14,3.2,2.4]],fr:[[8,12],[16,12],[12,13],[10,8],[15,8]]}
+};
+const FLOWERS=["peony","hydra","rose","marigold","sun"], TREES=["apple","persim","pear","cherry","avocado"];
+
+function growth(k,s,potc){
+  const o=G(25,34); pot(o,potc||POTC[0]);
+  if(s<0){ o.outline(INK); return o; }
+  if(s===0){ o.rect(10,23,14,23,"#6b4a2b"); o.rect(11,22,13,22,"#6b4a2b"); o.put(12,22,"#e8d49a"); o.put(13,22,"#c9a86a"); o.put(12,21,"#fff3b0"); o.outline(INK); return o; }
+  if(s===1){ sprout(o, TREES.includes(k)); o.outline(INK); return o; }
+  if(FLOWERS.includes(k)){
+    const h=[0,0,8,12,12][s], top=23-h;
+    o.line(12,23,12,top,"#2e8f4a"); o.line(13,23,13,top+1,"#23813d");
+    [20,17,14,11].forEach((y,i)=>{ if(y>top+1 && i<(s===2?2:4)){ leaf(o,12,y,i%2?1:-1,s===2?4:5,LF); } });
+    const col={peony:"#ff8fb8",hydra:"#7ea6ff",rose:"#e8344f",marigold:"#ff9f1c",sun:"#ffd23f"}[k];
+    if(s===3){ o.ball(12,top-1,2.3,LF); o.rect(11,top-4,13,top-3,col); o.put(12,top-5,col); o.put(12,top-3,"#fff3"); }
+    if(s===4){ HEAD[k](o,12,top-(k==="sun"?4:3.5),{peony:0.75,hydra:0.8,rose:0.78,marigold:0.72,sun:0.62}[k]); o.ball(12,top+0.5,2.2,LF2); }
+    o.outline(INK); return o;
+  }
+  if(TREES.includes(k)){
+    const T=TD[k], C=T.pal;
+    const tf=f=>T.sh.map(([x,y,rx,ry])=>[12+(x-12)*f,23-(23-y)*f,rx*f,ry*f]);
+    const trunk=top=>{ o.rect(11,top,13,23,TRK[0]); o.rect(13,top,13,23,TRK[2]); o.put(10,23,TRK[0]);o.put(14,23,TRK[2]); };
+    if(s===2){ trunk(Math.round(23-(23-T.top)*0.55)); tf(0.4).forEach(e=>o.ell(e[0],e[1],e[2],e[3],C)); }
+    if(s===3){ trunk(Math.round(23-(23-T.top)*0.85)); tf(0.72).forEach(e=>o.ell(e[0],e[1],e[2],e[3],C));
+      T.fr.forEach(([x,y],i)=>{ const px=12+(x-12)*0.72,py=23-(23-y)*0.72; if(i>3) return; if(k==="persim") { o.put(px,py,"#ffe9a0"); o.put(px+1,py,"#ffe9a0"); } else blossom(o,px,py,k==="avocado"?"#e8f5a0":(k==="pear"?"#fff":"#ffd0dc")); }); }
+    if(s===4){ trunk(T.top); o.line(12,T.top+2,8,T.top-1,TRK[0]); o.line(13,T.top+2,17,T.top-2,TRK[0]);
+      T.sh.forEach(e=>o.ell(e[0],e[1],e[2],e[3],C)); T.fr.forEach(([x,y])=>fruit(o,x,y,k)); }
+    o.outline(INK); return o;
+  }
+  if(k==="grape"){
+    const P=["#7a3fc6","#b891f0","#4a2390"];
+    if(s>=2){ o.rect(4,9,4,23,TRK[0]);o.rect(20,9,20,23,TRK[0]);o.rect(4,9,20,9,TRK[1]);o.rect(4,10,20,10,TRK[2]); }
+    o.line(12,23,12,s===2?15:10,"#2e8f4a");
+    const lv=[[12,19,-1],[12,16,1],[8,12],[16,12],[12,13],[6,15],[18,15]];
+    lv.slice(0,s===2?2:(s===3?5:7)).forEach(([x,y,d])=>{ if(d!==undefined){leaf(o,x,y,d,4,LF);} else { o.ball(x,y,2.4,LF); o.put(x,y,"#86e29a"); } });
+    const cl=(cx,cy,c)=>{ [[-2,0],[0,0],[2,0],[-1,2],[1,2],[0,4]].forEach(([dx,dy],i)=>o.ball(cx+dx,cy+dy+1,1.5, c?P:["#9ad66f","#c4ee9a","#6aa044"],i===0?"#fff":null)); };
+    if(s===3){ [[8,13],[16,13]].forEach(([x,y])=>{o.put(x,y,"#9ad66f");o.put(x+1,y,"#9ad66f");}); }
+    if(s===4){ cl(8,11,true); cl(16,11,true); cl(12,14,true); }
+    o.outline(INK); return o;
+  }
+  if(k==="blueberry"){
+    const P=["#4a5fd6","#8fa0ff","#2b3a99"];
+    if(s===2){ [[10,19],[14,19],[12,17]].forEach(([x,y])=>{o.line(12,23,x,y,TRK[0]); o.ball(x,y-1,1.8,LF2);}); }
+    if(s>=3){ const rx=s===3?5.5:8.2, ry=s===3?4.2:5.6, cy=s===3?18:16.5;
+      [[-1,0],[0,0],[1,0]].forEach(([d])=>o.line(12,23,12+d*4,cy+1,TRK[0]));
+      o.ell(12,cy,rx,ry,LF2); o.ell(12-rx/2.2,cy+1,rx/2,ry*0.7,LF); o.ell(12+rx/2.2,cy+1,rx/2,ry*0.7,LF); o.ell(12,cy-ry/2,rx*0.6,ry*0.55,LF);
+      const pts=[[-6,-1],[-3,-3],[1,-4],[5,-2],[7,1],[-4,2],[0,1],[4,3],[-7,2],[2,4]];
+      pts.slice(0,s===3?4:10).forEach(([dx,dy])=>{ const x=12+dx*(rx/8.2),y=cy+dy*(ry/5.6);
+        if(s===3){ o.put(x,y,"#fff"); o.put(x,y+1,"#ffd0dc"); } else { o.ball(x,y,1.7,P,"#dde3ff"); o.put(x,y-1,"#1f2a73"); } }); }
+    o.outline(INK); return o;
+  }
+  if(k==="strawberry"){
+    const berry=(x,y,col)=>{ const P=col?["#ee2d3d","#ff7a85","#b3182f"]:["#a8d07a","#c9e8a0","#7aa84a"]; o.ell(x,y,2.4,2.8,P); if(col){ o.put(x-1,y,"#ffe66d"); o.put(x+1,y+1,"#ffe66d"); o.put(x,y+2,"#ffe66d"); } o.rect(x-1,y-3,x+1,y-3,"#3aa957"); };
+    const cluster=(x,y,L2)=>{ leaf(o,x,y,-1,3,L2);leaf(o,x,y,1,3,L2);o.ball(x,y-2,1.6,L2); };
+    const n=[0,0,2,4,5][s]; [[8,21],[16,21],[12,19],[5,22],[19,22]].slice(0,n).forEach(([x,y])=>cluster(x,y,LF));
+    if(s===3){ [[9,14],[16,13]].forEach(([x,y])=>{ o.line(x,y+1,x<12?8:16,19,"#2e8f4a"); o.rect(x-1,y,x+1,y,"#fff"); o.rect(x,y-1,x,y+1,"#fff"); o.put(x,y,"#ffd23f"); }); berry(12,22,false); }
+    if(s===4){ o.line(9,20,6,22,"#2e8f4a"); o.line(15,20,18,22,"#2e8f4a"); o.rect(11,13,13,13,"#fff");o.rect(12,12,12,14,"#fff");o.put(12,13,"#ffd23f"); o.line(12,19,12,14,"#2e8f4a");
+      berry(6,25,true); berry(18,25,true); berry(12,22,true); }
+    o.outline(INK); return o;
+  }
+  if(k==="clover"){
+    const leaf3=(x,y)=>{ [[-2,0],[2,0],[0,-2]].forEach(([dx,dy])=>o.ball(x+dx,y+dy,1.8,LF,"#c8f7d2")); };
+    const st=[[12,16],[8,19],[16,18],[5,21],[19,21],[10,21]]; const n=[0,0,3,6,6][s];
+    st.slice(0,n).forEach(([x,y])=>{ o.line(12,23,x,y+1,"#2e8f4a"); leaf3(x,y); });
+    if(s===4){ o.line(12,23,12,13,"#2e8f4a"); [[0,-3],[0,3],[-3,0],[3,0]].forEach(([dx,dy])=>o.ball(12+dx,10+dy,2.2,["#3fbf5a","#9af0ad","#2a9344"],"#fff")); o.put(12,10,"#fff3b0"); }
+    o.outline(INK); return o;
+  }
+}
+
+/* ---------- 5단계: 결과물 크게 (화분 없음, 28x28) ---------- */
+function result(k){
+  const o=G(28,28);
+  const lf=(x,y,rx,ry)=>{ o.ell(x,y,rx,ry,LF); o.line(x-rx+1,y+ry*0.6,x+rx-1,y-ry*0.6,"#a6f0b4"); };
+  const berryP=["#d6203c","#ff6a7e","#9e1229"];
+  if(k==="peony"){ lf(5,20,5,2.6);lf(23,20,5,2.6); lf(8,24,5,2.4); lf(20,24,5,2.4); HEAD.peony(o,14,12,1.35); }
+  else if(k==="hydra"){ lf(6,22,6,3);lf(22,22,6,3); lf(14,25,4,2); HEAD.hydra(o,14,11,1.55); }
+  else if(k==="rose"){ o.line(14,19,14,27,"#2e8f4a");o.line(15,19,15,27,"#23813d"); [[16,22],[12,24]].forEach(([x,y])=>{o.put(x,y,"#5e3b1a");o.put(x+1,y,"#5e3b1a");}); leaf(o,15,23,1,6,LF); leaf(o,13,25,-1,6,LF);
+    o.ell(14,18,5,3,LF2); [-4,-2,0,2,4].forEach(d=>o.put(14+d,15,"#2a8f48")); HEAD.rose(o,14,10,1.5); }
+  else if(k==="marigold"){ lf(5,22,5,2.6);lf(23,22,5,2.6); HEAD.marigold(o,14,12,1.5); }
+  else if(k==="sun"){ o.line(14,23,14,27,"#2e8f4a"); o.line(15,23,15,27,"#23813d"); lf(7,25,5,2.4);lf(21,25,5,2.4); HEAD.sun(o,14,12,1.2); }
+  else if(k==="clover"){ o.line(14,14,16,27,"#2e8f4a");o.line(15,14,17,27,"#23813d");
+    const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+    dirs.forEach(([dx,dy])=>{ const px=-dy,py=dx; const pts=[];
+      for(let u=1;u<=9;u++)for(let v=-4;v<=4;v++){ const lu=u,lv=v; const c1=Math.hypot(lu-5.8,Math.abs(lv)-2),c2=Math.hypot(lu-3.5,lv); if(c1<=3.2||c2<=3.0) pts.push([lu,lv]); }
+      pts.forEach(([u,v])=>{ const x=14+dx*u+px*v,y=13+dy*u+py*v; const t=(-0.6*(dx*u+px*v)-0.8*(dy*u+py*v))/9; o.put(x,y,t>0.25?"#7ae08e":(t<-0.3?"#2a9344":"#3fbf5a")); });
+      for(let u=2;u<=7;u++) o.put(14+dx*u,13+dy*u,"#c8f7d2"); });
+    o.put(14,13,"#fff3b0"); o.ball(11,8,1.2,["#bfe6ff","#fff","#6aaee0"]); [[3,3],[24,5],[4,22],[25,20]].forEach(([x,y])=>{o.put(x,y,"#ffd23f");o.put(x+1,y,"#fff3b0");o.put(x,y+1,"#fff3b0");}); }
+  else if(k==="apple"){ lf(21,5,5,2.4); o.line(14,3,14,7,TRK[0]);o.line(15,3,15,7,TRK[2]);
+    const P=["#e8344f","#ff6b7e","#a91530"]; o.ell(14,17,10.5,9.2,P); o.ball(9.5,12,5.6,P); o.ball(18.5,12,5.6,P); o.ball(10,21,5.2,P); o.ball(18,21,5.2,P);
+    for(let y=8;y<=10;y++)for(let x=13;x<=15;x++) o.g[y][x]=null; o.put(14,10,"#a91530"); o.put(14,11,"#a91530");
+    [[8,12],[8,13],[9,11],[9,10],[10,10]].forEach(([x,y])=>o.put(x,y,"#ffd0d6")); o.put(8,15,"#fff"); }
+  else if(k==="grape"){ lf(22,5,6,3.2); o.line(14,2,14,6,TRK[0]); o.line(5,3,22,3,TRK[0]);
+    const P=["#7a3fc6","#b891f0","#4a2390"]; const rows=[[4,6],[5,9],[4,12],[3,15],[2,18],[1,21]];
+    rows.forEach(([n,y],i)=>{ for(let j=0;j<n;j++){ const x=14+(j-(n-1)/2)*3.9; o.ball(x,y+(i%2?0.8:0),2.2,P,"#fff"); } }); }
+  else if(k==="cherry"){ o.line(3,4,25,4,TRK[0]); o.line(3,5,25,5,TRK[2]); lf(5,3,4,2);lf(23,3,4,2);
+    [[8,18,9],[14,20,14],[20,17,19],[11,12,11],[17,12,17]].forEach(([x,y,sx])=>{ o.line(sx,5,x,y-3,"#5aa05a"); o.ball(x,y,3.3,berryP,"#fff"); o.put(x,y-3,"#7a1020"); }); }
+  else if(k==="persim"){ lf(5,6,4,2);lf(23,6,4,2);
+    const P=["#ff8a1f","#ffc27a","#d96a0a"]; o.ell(9,17,7,5.8,P,"#fff3d0"); o.ell(19,15,6,5,P,"#fff3d0");
+    [[9,11],[19,10]].forEach(([x,y])=>{ o.rect(x-3,y,x+3,y+1,"#3a9a3a"); o.rect(x-1,y-1,x+1,y-1,"#3a9a3a"); o.put(x,y-2,TRK[0]); o.rect(x-2,y+2,x+2,y+2,"#2a7a2a"); }); }
+  else if(k==="pear"){ lf(21,6,5,2.4); o.line(14,2,14,6,TRK[0]); o.line(15,2,15,6,TRK[2]);
+    const P=["#c9d94a","#eef27a","#9fb22d"]; o.ball(14,10,4,P); o.ell(14,19,7.5,7,P); o.ell(14,14,5,5,P,null);
+    [[10,16],[17,20],[12,22],[18,15],[9,20]].forEach(([x,y])=>o.put(x,y,"#8a9a2a")); [[11,17],[11,18],[12,16]].forEach(([x,y])=>o.put(x,y,"#fff9c0")); }
+  else if(k==="avocado"){ lf(23,5,5,2.4);
+    const skin=["#2a4d1a","#3f7a2a","#173010"]; o.ball(14,10,4.6,skin); o.ell(14,18,9,8.5,skin); o.ell(14,14,6,6,skin);
+    for(let y=0;y<28;y++)for(let x=0;x<28;x++){ const ux=(x-14)/6.8,uy=(y-18)/6.4; const up=Math.hypot((x-14)/3.2,(y-10)/3.2); if((ux*ux+uy*uy<=1||up<=1||(Math.hypot((x-14)/4.6,(y-14)/4.6)<=1))&&o.g[y][x]) o.put(x,y,y<14?"#d8ec86":"#c9e07a"); }
+    o.ball(14,18,3.8,["#8a5a2b","#b07a45","#5e3b1a"],"#e0b27a"); o.put(12,14,"#f4f9b0");o.put(13,13,"#f4f9b0"); }
+  else if(k==="blueberry"){ lf(6,6,5,2.4);lf(22,7,5,2.4);
+    const P=["#4a5fd6","#8fa0ff","#2b3a99"]; [[8,13],[15,10],[21,15],[12,19],[5,20],[19,22]].forEach(([x,y])=>{ o.ball(x,y,3.7,P,"#dde3ff"); o.rect(x-1,y-2,x+1,y-2,"#1f2a73"); o.put(x,y-1,"#1f2a73"); o.put(x+1,y-1,"#c9d3ff"); }); }
+  else if(k==="strawberry"){ const P=["#ee2d3d","#ff7a85","#b3182f"];
+    o.ell(9,13,5.8,5.6,P);o.ell(19,13,5.8,5.6,P); o.ell(14,16,9.5,6,P);
+    for(let y=17;y<=26;y++){ const w=Math.max(0,Math.round((26.6-y)*0.95)); for(let x=14-w;x<=14+w;x++){ const t=(-0.6*(x-14)-0.8*(y-17))/10; o.put(x,y,t>0.5?P[1]:(t<-0.35?P[2]:P[0])); } }
+    for(let y=7;y<=24;y++)for(let x=3;x<=25;x++){ if(o.g[y][x]&&y%2===0&&(x+((y>>1)%2)*3)%6===0&&y>9) { o.put(x,y,"#ffe66d"); o.put(x,y+1,"#a86a10"); } }
+    [[9,5],[11,4],[14,3],[17,4],[19,5],[14,6],[11,7],[17,7]].forEach(([x,y])=>o.put(x,y,"#3aa957")); o.rect(11,5,17,6,"#3aa957"); o.rect(13,3,15,4,"#2e8f4a"); o.put(14,2,TRK[0]); o.put(8,9,"#ffd0d6");o.put(9,8,"#ffd0d6"); }
+  o.outline(INK); return o;
+}
+window.PLANT2={growth:(k,s,px,potc)=>svg(growth(k,s,potc),px),result:(k,px)=>svg(result(k),px)};
+})();
+
+function plantSVG(seed, step, px){
+  const k=(seed||SEEDS[0]).k, pc=POTS[stageOf(step)], w=px||128;
+  if(step<=0) return PLANT2.growth(k,-1,w,pc);                       // 빈 화분
+  if(step>=100) return PLANT2.result(k,Math.round(w*1.08));          // 5단계: 화분 없이 결과물 (처음 시안의 70% 크기)
+  const s = step<=10?0 : step<=25?1 : step<=50?2 : step<=75?3 : 4;   // 0=씨앗 1=새싹 2=자라는 중 3=꽃·열매 맺힘 4=완성
+  return PLANT2.growth(k,s,w,pc);
 }
 
 /* --- 저장소 --- */
@@ -1520,7 +1680,7 @@ function renderGarden(){
   seedBox.className="hidden";
   const sd=SEEDS.find(s=>s.k===pot.seed)||SEEDS[0], done=pot.step>=100;
   $("g-plant").innerHTML=plantSVG(sd,pot.step,128);
-  $("g-stage").textContent=done?`🎉 ${sd.n} 완성!`:`${sd.n} · ${STAGES[stageOf(pot.step)]}`;
+  $("g-stage").textContent=done?`🎉 ${sd.n} 완성!`:`${sd.n} · ${stageText(pot.step)}`;
   $("g-bar").style.width=pot.step+"%";
   $("g-step").textContent=`💧 ${pot.step} / 100 단계`+(done?"":` · 다음 단계까지 한 판!`);
   $("g-hint").textContent=done?"컬렉션에 보관하면 새 씨앗을 심을 수 있어요.":"한 판을 끝낼 때마다 물 1방울이 주어져요.";
