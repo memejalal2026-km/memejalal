@@ -140,7 +140,7 @@
   /* 광고 */
   #ad{position:fixed;left:0;right:0;bottom:0;height:78px;background:#fff;border-top:3px solid var(--ink);display:flex;align-items:center;justify-content:center;z-index:10;overflow:hidden}
   #ad .placeholder{color:#aaa;font-size:12px;text-align:center;line-height:1.5}
-  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;font-size:14px;z-index:20;opacity:0;transition:.25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;font-size:14px;z-index:40;opacity:0;transition:.25s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1}
   /* 광고를 끈 상태(SHOW_AD:false)에서는 하단 영역을 숨기고 화면을 꽉 채웁니다 */
   body.no-ad{padding-bottom:0}
@@ -175,6 +175,17 @@
   .collgrid div{background:#f3f0ff;border:3px solid var(--ink);padding:8px;text-align:center;font-size:12px;line-height:1.5}
   .collgrid svg{display:block;margin:0 auto 4px}
   .collempty{text-align:center;color:var(--sub);font-size:14px;line-height:1.7;padding:18px 0}
+  .gbox .row2{display:flex;gap:8px}
+  .gbox .row2 .btn{flex:1}
+  .btn.brag{background:var(--accent);color:var(--ink)}
+  /* 내 화분 공유하기 */
+  .pshare{position:fixed;inset:0;background:rgba(30,20,70,.6);z-index:35;display:flex;align-items:center;justify-content:center;padding:16px}
+  .pshare .card{width:100%;max-width:420px;max-height:calc(100vh - 32px);overflow-y:auto;padding:18px 16px}
+  .pshare img{display:block;width:100%;max-width:300px;margin:0 auto 6px;border:3px solid var(--ink);background:#fff7d6;-webkit-touch-callout:default}
+  .pshare .wait{text-align:center;color:var(--sub);padding:60px 0;line-height:1.6}
+  .invite{background:#fff4c2;border:3px solid var(--ink);padding:12px;margin-bottom:14px;text-align:center;font-size:14px;line-height:1.6;word-break:keep-all}
+  .invite .sprite{margin-bottom:4px;animation:none}
+  .invite .btn{margin-top:8px;padding:11px;font-size:15px}
   /* 하단 안내 푸터 (회색 작은 글씨) */
   .site-foot{max-width:480px;margin:14px auto 0;padding:12px 16px 20px;text-align:center;font-size:11px;color:#8a8a94;background:rgba(0,0,0,.05);line-height:1.8}
   .site-foot a{color:#76767f;text-decoration:none;margin:0 5px}
@@ -186,6 +197,7 @@
 
   <!-- 1. 시작 페이지 (모드 선택 + 5초 룰 설명) -->
   <section id="screen-start" class="card">
+    <div class="invite hidden" id="start-invite"></div>
     <div class="logo">
       <div id="logo-mark" class="mark"></div>
       <div class="logo-text">
@@ -345,6 +357,7 @@
       <p class="modehint" id="g-hint"></p>
       <div id="g-seeds" class="hidden"></div>
       <button class="btn hidden" id="g-keep">🏆 컬렉션에 보관하기</button>
+      <button class="btn brag hidden" id="g-share">📸 내 화분 자랑하기</button>
       <button class="btn ghost" id="g-change">🔄 화분 바꾸기</button>
     </div>
     <div id="g-coll" class="hidden"></div>
@@ -386,6 +399,24 @@
 <!-- 하단 광고 영역: 카카오 애드핏/애드센스 승인 후 아래 코드를 이곳에 붙여넣으세요 -->
 <div id="ad">
   <div class="placeholder">광고 영역<br>(320×50 배너)</div>
+</div>
+
+<!-- 12. 내 화분 공유하기 (이미지 카드) -->
+<div class="pshare hidden" id="pshare">
+  <div class="card">
+    <h2 style="font-size:20px;margin-bottom:10px">📸 내 화분 자랑하기</h2>
+    <div id="ps-wait" class="wait">이미지 만드는 중… 🌱</div>
+    <img id="ps-img" class="hidden" alt="내 화분 공유 이미지">
+    <p class="modehint" style="margin:4px 0 2px">이미지를 길게 누르면 사진에 저장할 수 있어요.</p>
+    <button class="btn" id="ps-native">📤 이미지로 공유하기</button>
+    <button class="btn ghost" id="ps-save">💾 이미지 저장</button>
+    <div class="share-row">
+      <button class="kakao" id="ps-kakao">카카오톡</button>
+      <button class="xbtn" id="ps-x">X</button>
+      <button class="copy" id="ps-copy">링크복사</button>
+    </div>
+    <button class="btn ghost" id="ps-close">닫기</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1010,6 +1041,7 @@ function showQuestion(q, label, limit, done){
 /* ============ 혼자 하기 ============ */
 let game = null;
 let shareMsg = "";
+let shareLink = "";   // 비어 있으면 기본 게임 주소로 공유 (화분 공유 때만 초대 주소를 씀)
 
 function startSolo(){
   logEvent("solo_start");
@@ -1070,6 +1102,7 @@ function soloFinish(){
   $("r-title").textContent = `${r.e} ${r.t}`;
   $("r-score").textContent = `${game.score} / ${CONFIG.QUESTIONS_PER_GAME}`;
   $("r-ment").textContent = r.m;
+  shareLink = "";
   shareMsg = `밈잘알? ${game.score}/${CONFIG.QUESTIONS_PER_GAME} - ${r.t} ${r.e}\n너도 5초 안에 도전해 봐!`;
   logEvent("solo_finish", game.score);
   const st = updateStreak(game.score);
@@ -1158,6 +1191,7 @@ function showSummary(){
     body.appendChild(tr);
   });
   $("btn-nextround").textContent = (!CONFIG.RANDOM_ALL && game.round < 5) ? "다음 라운드 (난이도 ↑)" : "다음 라운드";
+  shareLink = "";
   shareMsg = `밈잘알? 친구 대결 ${game.round}라운드 결과!\n` + (losers.length ? `🎯 벌칙 당첨: ${losers.join(", ")}` : "🎉 전원 통과!") + "\n너도 5초 안에 도전해 봐!";
   show("summary");
 }
@@ -1165,7 +1199,7 @@ function showSummary(){
 /* ============ 공유 ============ */
 function shareKakao(){
   const K = window.Kakao;
-  const url = CONFIG.SHARE_URL;
+  const url = shareLink || CONFIG.SHARE_URL;
   if(K && CONFIG.KAKAO_JS_KEY){
     if(!K.isInitialized()) K.init(CONFIG.KAKAO_JS_KEY);
     K.Share.sendDefault({
@@ -1176,7 +1210,7 @@ function shareKakao(){
         imageUrl:"https://memejalal.memejalal2026.workers.dev/og.png",
         link:{mobileWebUrl:url, webUrl:url}
       },
-      buttons:[{title:"나도 도전하기", link:{mobileWebUrl:url, webUrl:url}}]
+      buttons:[{title:shareLink?"나도 화분 키우기":"나도 도전하기", link:{mobileWebUrl:url, webUrl:url}}]
     });
     return;
   }
@@ -1186,11 +1220,11 @@ function shareKakao(){
   }else copyLink();
 }
 function shareX(){
-  const url = "https://twitter.com/intent/tweet?text="+encodeURIComponent(shareMsg)+"&url="+encodeURIComponent(CONFIG.SHARE_URL);
+  const url = "https://twitter.com/intent/tweet?text="+encodeURIComponent(shareMsg)+"&url="+encodeURIComponent(shareLink || CONFIG.SHARE_URL);
   window.open(url,"_blank","noopener");
 }
 function copyLink(){
-  const txt = shareMsg+"\n"+CONFIG.SHARE_URL;
+  const txt = shareMsg+"\n"+(shareLink || CONFIG.SHARE_URL);
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(()=>toast("링크가 복사됐어요!"),()=>fallbackCopy(txt));
   }else fallbackCopy(txt);
@@ -1540,7 +1574,7 @@ function result(k){
     [[9,5],[11,4],[14,3],[17,4],[19,5],[14,6],[11,7],[17,7]].forEach(([x,y])=>o.put(x,y,"#3aa957")); o.rect(11,5,17,6,"#3aa957"); o.rect(13,3,15,4,"#2e8f4a"); o.put(14,2,TRK[0]); o.put(8,9,"#ffd0d6");o.put(9,8,"#ffd0d6"); }
   o.outline(INK); return o;
 }
-window.PLANT2={growth:(k,s,px,potc)=>svg(growth(k,s,potc),px),result:(k,px)=>svg(result(k),px)};
+window.PLANT2={growth:(k,s,px,potc)=>svg(growth(k,s,potc),px),result:(k,px)=>svg(result(k),px),growthGrid:(k,s,potc)=>growth(k,s,potc),resultGrid:k=>result(k)};
 })();
 
 function plantSVG(seed, step, px){
@@ -1549,6 +1583,13 @@ function plantSVG(seed, step, px){
   if(step>=100) return PLANT2.result(k,Math.round(w*0.86));          // 5단계: 화분 없이 결과물 (처음 시안의 70% 크기)
   const s = step<=10?0 : step<=25?1 : step<=50?2 : step<=75?3 : 4;   // 0=씨앗 1=새싹 2=자라는 중 3=꽃·열매 맺힘 4=완성
   return PLANT2.growth(k,s,w,pc);
+}
+/* 공유 이미지용: 같은 그림을 픽셀 칸(g, W, H)으로 돌려줌 */
+function plantGrid(seed, step){
+  const k=(seed||SEEDS[0]).k, pc=POTS[stageOf(step)];
+  if(step<=0) return PLANT2.growthGrid(k,-1,pc);
+  if(step>=100) return PLANT2.resultGrid(k);
+  return PLANT2.growthGrid(k, step<=10?0 : step<=25?1 : step<=50?2 : step<=75?3 : 4, pc);
 }
 
 /* --- 저장소 --- */
@@ -1675,6 +1716,7 @@ function renderGarden(){
     seedBox.innerHTML='<button class="rand" data-k="rand">🎲 랜덤으로 고르기</button>'+SEEDS.map(s=>`<button data-k="${s.k}"><span class="dot" style="background:${s.c}"></span>${s.n}</button>`).join("");
     seedBox.querySelectorAll("button").forEach(b=>b.onclick=()=>plant(b.dataset.k));
     $("g-keep").classList.add("hidden"); $("g-change").classList.add("hidden"); $("g-play").classList.remove("hidden");
+    $("g-share").classList.add("hidden");
     return;
   }
   seedBox.className="hidden";
@@ -1685,6 +1727,7 @@ function renderGarden(){
   $("g-step").textContent=`💧 ${pot.step} / 100 단계`+(done?"":` · 다음 단계까지 한 판!`);
   $("g-hint").textContent=done?"컬렉션에 보관하면 새 씨앗을 심을 수 있어요.":"한 판을 끝낼 때마다 물 1방울이 주어져요.";
   $("g-keep").classList.toggle("hidden",!done);
+  $("g-share").classList.remove("hidden");
   $("g-change").classList.toggle("hidden",done);
   $("g-play").classList.toggle("hidden",done);
 }
@@ -1761,9 +1804,136 @@ function afterSolo(){
     pot.step=Math.min(100,pot.step+1);
     msg=pot.step>=100?"💧 물 1방울! 🎉 완성했어요!":(stageOf(pot.step)!==before?"💧 물 1방울! ✨ 화분이 자랐어요!":"💧 물 1방울!");
   }
-  box.innerHTML=`<div class="sprite">${plantSVG(sd,pot.step,96)}</div><b>${msg}</b><br>${sd.n} ${pot.step} / 100 단계<button class="btn" id="rg-view">🌱 화분 보기</button>`;
+  box.innerHTML=`<div class="sprite">${plantSVG(sd,pot.step,96)}</div><b>${msg}</b><br>${sd.n} ${pot.step} / 100 단계<div class="row2"><button class="btn ghost" id="rg-view">🌱 화분 보기</button><button class="btn brag" id="rg-share">📸 자랑하기</button></div>`;
   $("rg-view").onclick=openGarden;
+  $("rg-share").onclick=openPotShare;
 }
+
+/* ============ 내 화분 공유하기 ============
+   - 화분 모습을 이미지 카드(1080×1350)로 그려서 공유/저장
+   - 공유 링크에 ?from=닉네임&p=씨앗&s=단계 를 붙여, 받은 친구가 열면
+     첫 화면에 "OO님의 장미가 N단계까지 자랐어요! 너도 키워볼래?" 안내가 떠요 */
+function escHtml(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const josaIGA = w => { const c=w.charCodeAt(w.length-1); return (c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28) ? "이" : "가"; };
+let potBlob=null, potFile=null;
+
+function potInviteUrl(nick, pot){
+  return CONFIG.SHARE_URL+"?from="+encodeURIComponent(nick)+"&p="+encodeURIComponent(pot.seed)+"&s="+pot.step;
+}
+function potShareMsg(sd, step){
+  return step>=100
+    ? `🎉 밈잘알?에서 내 ${sd.n} 화분을 다 키웠어요! (100/100)\n퀴즈 한 판 = 물 1방울 💧 너도 키워볼래?`
+    : `🌱 밈잘알?에서 ${sd.n} 키우는 중! ${step}/100 단계\n퀴즈 한 판 = 물 1방울 💧 너도 키워볼래?`;
+}
+/* 줄바꿈해서 가운데 정렬로 글자 쓰기 */
+function drawWrapped(ctx, text, cx, y, maxW, lh, maxLines){
+  const words=String(text).split(" "); const lines=[]; let cur="";
+  words.forEach(w=>{ const t=cur?cur+" "+w:w; if(ctx.measureText(t).width>maxW && cur){ lines.push(cur); cur=w; } else cur=t; });
+  if(cur) lines.push(cur);
+  const out=lines.slice(0,maxLines);
+  out.forEach((l,i)=>ctx.fillText(l,cx,y+i*lh));
+  return out.length;
+}
+async function makePotCard(nick, d){
+  const pot=d.pot, sd=SEEDS.find(s=>s.k===pot.seed)||SEEDS[0], done=pot.step>=100;
+  const FONT='"Galmuri11","Galmuri9",-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+  try{ await Promise.race([Promise.all([document.fonts.load('bold 40px "Galmuri11"'),document.fonts.load('40px "Galmuri11"')]), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
+  const W=1080,H=1350, c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d"), INK="#2b1d6e", MAIN="#6c4cf1";
+  // 배경 (체크무늬)
+  x.fillStyle="#fff7d6"; x.fillRect(0,0,W,H);
+  x.fillStyle="#fdeeb5"; for(let yy=0;yy<H;yy+=60) for(let xx=(yy/60%2)*60;xx<W;xx+=120) x.fillRect(xx,yy,60,60);
+  // 카드 (그림자 + 테두리)
+  const L=60,T=60,R=W-60,B=H-60;
+  x.fillStyle=INK; x.fillRect(L+18,T+18,R-L,B-T); x.fillRect(L,T,R-L,B-T);
+  x.fillStyle="#fff"; x.fillRect(L+12,T+12,R-L-24,B-T-24);
+  x.textAlign="center"; x.textBaseline="alphabetic";
+  // 제목
+  x.fillStyle=MAIN; x.font=`bold 46px ${FONT}`; x.fillText("밈잘알?",W/2,165);
+  x.fillStyle=INK; let fs=70; x.font=`bold ${fs}px ${FONT}`;
+  const title=nick+"의 화분"; while(x.measureText(title).width>860&&fs>40){ fs-=4; x.font=`bold ${fs}px ${FONT}`; }
+  x.fillText(title,W/2,255);
+  // 식물 (게임 속 픽셀 그대로 크게)
+  x.fillStyle="#f6f3ff"; x.fillRect(290,290,500,490);
+  x.fillStyle=INK; x.fillRect(290,290,500,6); x.fillRect(290,774,500,6); x.fillRect(290,290,6,490); x.fillRect(784,290,6,490);
+  const pg=plantGrid(sd,pot.step);
+  const cell=Math.floor(Math.min(450/pg.W,450/pg.H)*(done?0.92:1));
+  const px0=Math.round(W/2-pg.W*cell/2), py0=Math.round(535-pg.H*cell/2);
+  pg.g.forEach((row,yy)=>row.forEach((col,xx)=>{ if(col){ x.fillStyle=col; x.fillRect(px0+xx*cell,py0+yy*cell,cell,cell); } }));
+  // 이름 · 단계
+  x.fillStyle=INK; x.font=`bold 60px ${FONT}`;
+  x.fillText(done?`🎉 ${sd.n} 완성!`:sd.n,W/2,865);
+  x.fillStyle="#6f6a8a"; x.font=`36px ${FONT}`;
+  const lines=drawWrapped(x, done?"100단계까지 다 키웠어요!":stageText(pot.step), W/2, 925, 820, 46, 2);
+  // 진행 바
+  const by=925+lines*46+6, bw=760, bx=W/2-bw/2;
+  x.fillStyle=INK; x.fillRect(bx,by,bw,44);
+  x.fillStyle="#fff"; x.fillRect(bx+8,by+8,bw-16,28);
+  x.fillStyle="#4cc9f0"; x.fillRect(bx+8,by+8,Math.max(6,(bw-16)*pot.step/100),28);
+  x.fillStyle=INK; x.font=`bold 40px ${FONT}`;
+  const coll=(d.coll||[]).length;
+  x.fillText(`💧 ${pot.step} / 100 단계`+(coll?`   🏆 컬렉션 ${coll}`:""),W/2,by+94);
+  // 초대 띠
+  const iy=B-150;
+  x.fillStyle=MAIN; x.fillRect(L+12,iy,R-L-24,138);
+  x.fillStyle="#fff"; x.font=`bold 44px ${FONT}`;
+  x.fillText("퀴즈 한 판 = 물 1방울 💧 너도 키워볼래?",W/2,iy+62);
+  x.fillStyle="#ffd23f"; x.font=`30px ${FONT}`;
+  x.fillText(CONFIG.SHARE_URL.replace(/^https?:\/\//,"").replace(/\/(index\.html)?$/,"").slice(0,48),W/2,iy+110);
+  return await new Promise(r=>c.toBlob(r,"image/png"));
+}
+async function openPotShare(){
+  const m=me(); if(!m||!m.data.pot){ toast("먼저 씨앗을 심어 주세요 🌱"); return; }
+  const sd=SEEDS.find(s=>s.k===m.data.pot.seed)||SEEDS[0];
+  shareMsg=potShareMsg(sd, m.data.pot.step);
+  shareLink=potInviteUrl(m.nick, m.data.pot);
+  $("ps-wait").textContent="이미지 만드는 중… 🌱";
+  $("ps-wait").classList.remove("hidden"); $("ps-img").classList.add("hidden");
+  $("pshare").classList.remove("hidden");
+  try{
+    potBlob=await makePotCard(m.nick, m.data);
+    if(!potBlob) throw 0;
+    potFile=new File([potBlob],`밈잘알_${sd.n}_${m.data.pot.step}단계.png`,{type:"image/png"});
+    const img=$("ps-img"); if(img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+    img.dataset.url=URL.createObjectURL(potBlob); img.src=img.dataset.url;
+    img.classList.remove("hidden"); $("ps-wait").classList.add("hidden");
+  }catch(e){ $("ps-wait").textContent="이미지를 만들지 못했어요. 아래 버튼으로 링크를 공유해 주세요."; potFile=null; }
+  let canFile=false; try{ canFile=!!(potFile && navigator.canShare && navigator.canShare({files:[potFile]})); }catch(e){}
+  $("ps-native").classList.toggle("hidden",!canFile);
+}
+async function sharePotNative(){
+  if(!potFile) return;
+  try{ await navigator.share({files:[potFile], text:shareMsg+"\n"+shareLink}); }
+  catch(e){ if(e && e.name!=="AbortError") toast("공유하지 못했어요. 이미지 저장 후 올려 주세요"); }
+}
+function savePotImage(){
+  const img=$("ps-img"); if(!img.dataset.url){ toast("이미지를 아직 만들고 있어요"); return; }
+  const a=document.createElement("a"); a.href=img.dataset.url; a.download=potFile?potFile.name:"밈잘알_화분.png";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(/iphone|ipad|ipod/i.test(navigator.userAgent)?"안 되면 이미지를 길게 눌러 '사진에 저장'":"이미지를 저장했어요!");
+}
+function closePotShare(){ $("pshare").classList.add("hidden"); shareLink=""; }
+$("g-share").onclick=openPotShare;
+$("ps-native").onclick=sharePotNative;
+$("ps-save").onclick=savePotImage;
+$("ps-kakao").onclick=shareKakao;
+$("ps-x").onclick=shareX;
+$("ps-copy").onclick=copyLink;
+$("ps-close").onclick=closePotShare;
+$("pshare").onclick=e=>{ if(e.target.id==="pshare") closePotShare(); };
+
+/* 친구가 공유 링크로 들어왔을 때: 첫 화면에 초대 안내 */
+(function showInvite(){
+  let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; }
+  const from=(q.get("from")||"").trim().slice(0,10), sd=SEEDS.find(s=>s.k===q.get("p")), st=parseInt(q.get("s"),10);
+  if(!from || !sd || !(st>=1&&st<=100)) return;
+  const box=$("start-invite");
+  const what = st>=100 ? `${escHtml(sd.n)}${josaIGA(sd.n)} 다 자랐어요! 🎉` : `${escHtml(sd.n)}${josaIGA(sd.n)} <b>${st}단계</b>까지 자랐어요!`;
+  box.innerHTML=`<div class="sprite">${plantSVG(sd,st,64)}</div><b>${escHtml(from)}</b>님의 ${what}<br>퀴즈 한 판 = 물 1방울 💧 너도 키워볼래?<button class="btn" id="inv-go">🌱 나도 화분 키우기</button>`;
+  box.classList.remove("hidden");
+  $("inv-go").onclick=openGarden;
+  try{ history.replaceState(null,"",location.pathname); }catch(e){}
+})();
 
 /* ============ 홈 화면에 추가 (바로가기 아이콘) ============ */
 let installEvt = null;
