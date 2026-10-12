@@ -1374,15 +1374,13 @@ function svg(o,px){
 const hh=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%100;
 function leaf(o,x,y,dir,len,P){ o.ell(x+dir*(len/2+0.5),y-len*0.15,len/2+0.8,1.6,P); o.line(x+dir*0.5,y,x+dir*len,y-len*0.3,P[1]); }
 
-/* ---------- 화분 (이전 시안 스타일: 테두리 없이 단순하게) ---------- */
-function oldPot(o,c){
-  const put2=(x,y,col)=>{ if(x>=0&&x<o.W&&y>=0&&y<o.H&&!o.g[y][x]) o.g[y][x]=col; };
-  const rect2=(x0,y0,x1,y1,col)=>{ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)put2(x,y,col); };
-  rect2(6,24,18,24,"#6b4a2b"); [8,11,14,16].forEach(x=>{ if(o.g[24][x]==="#6b4a2b") o.g[24][x]="#8a6a45"; });
-  rect2(5,25,19,26,c[0]);
-  rect2(6,27,18,32,c[0]);
-  for(let y=27;y<=32;y++){ put2(6,y,c[1]); put2(18,y,c[1]); }
-  rect2(8,33,16,33,c[1]);
+/* ---------- 화분 ---------- */
+function pot(o,c){
+  o.rect(6,24,18,24,"#6b4a2b"); [8,11,14,16].forEach(x=>o.put(x,24,"#8a6a45"));
+  o.rect(5,25,19,25,c[0]); o.rect(5,26,19,26,c[1]);
+  o.rect(6,27,18,28,c[0]); o.rect(7,29,17,30,c[0]); o.rect(8,31,16,31,c[1]);
+  for(let y=27;y<=31;y++){o.put(y<29?6:(y<31?7:8),y,c[1]);o.put(y<29?18:(y<31?17:16),y,c[1]);}
+  o.rect(8,27,8,29,"rgba(255,255,255,.35)");
 }
 
 /* ---------- 열매/꽃 (작게, 화분용) ---------- */
@@ -1431,8 +1429,8 @@ const TD={
 };
 const FLOWERS=["peony","hydra","rose","marigold","sun"], TREES=["apple","persim","pear","cherry","avocado"];
 
-function growthBase(k,s){
-  const o=G(25,34);
+function growth(k,s,potc){
+  const o=G(25,34); pot(o,potc||POTC[0]);
   if(s<0){ o.outline(INK); return o; }
   if(s===0){ o.rect(10,23,14,23,"#6b4a2b"); o.rect(11,22,13,22,"#6b4a2b"); o.put(12,22,"#e8d49a"); o.put(13,22,"#c9a86a"); o.put(12,21,"#fff3b0"); o.outline(INK); return o; }
   if(s===1){ sprout(o, TREES.includes(k)); o.outline(INK); return o; }
@@ -1495,8 +1493,6 @@ function growthBase(k,s){
     o.outline(INK); return o;
   }
 }
-
-function growth(k,s,potc){ const o=growthBase(k,s); oldPot(o,potc||POTC[0]); return o; }
 
 /* ---------- 5단계: 결과물 크게 (화분 없음, 28x28) ---------- */
 function result(k){
