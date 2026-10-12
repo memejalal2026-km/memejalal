@@ -2137,7 +2137,7 @@ function openCat(next){
   catNext = next;
   $("cat-title").textContent = next==="solo" ? "🙋 혼자 하기" : "⚔️ VS 친구";
   const g = $("cat-grid");
-  g.innerHTML = CATS.map(c=>{ const n=catCount(c.k); return `<button data-k="${c.k}"${n?"":" disabled"} class="${quizCat===c.k?"on":""}"><span class="ce">${c.e}</span>${c.n}<small>${n}문제</small></button>`; }).join("");
+  g.innerHTML = CATS.map(c=>{ const n=catCount(c.k); return `<button data-k="${c.k}"${n?"":" disabled"} class="${quizCat===c.k?"on":""}"><span class="ce">${c.e}</span>${c.n}</button>`; }).join("");
   g.querySelectorAll("button").forEach(b=>b.onclick=()=>goCat(b.dataset.k));
   $("cat-rand").classList.toggle("on", quizCat==="all");
   show("cat");
