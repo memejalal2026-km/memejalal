@@ -15,12 +15,11 @@
 <meta property="og:title" content="화분 키우기">
 <meta property="og:description" content="퀴즈 풀고 물 주고, 나만의 화분을 키워요! 상식·넌센스·속담·영어·사자성어·국기·신조어·밈">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://memejalal.memejalal2026.workers.dev/og.png">
+<meta property="og:image" content="https://memejalal.memejalal2026.workers.dev/og-main.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:url" content="https://memejalal.memejalal2026.workers.dev/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://memejalal.memejalal2026.workers.dev/og.png">
+<meta name="twitter:image" content="https://memejalal.memejalal2026.workers.dev/og-main.png">
 <meta name="twitter:title" content="화분 키우기">
 <meta name="twitter:description" content="퀴즈 풀고 물 주고, 나만의 화분을 키워요!">
 <!-- 화분 공유 링크(?from=&p=&s=)로 들어오면 worker.js가 위 미리보기 제목·그림을 그 화분에 맞게 바꿔요 -->
@@ -1457,17 +1456,29 @@ function showSummary(){
 }
 
 /* ============ 공유 ============ */
+/* 결과 공유 링크: 혼자 하기에서 화분을 키우는 회원이면 그 화분 링크(미리보기에 식물 그림),
+   아니면 게임 주소 + ?go=2 (카톡·X가 예전 '밈잘알?' 미리보기를 기억하고 있어서 새 주소로 다시 읽게 함) */
+function resultShare(){
+  const m = (game && game.mode==="solo") ? me() : null, pot = m && m.data.pot;
+  if(pot){
+    const sd=SEEDS.find(s=>s.k===pot.seed)||SEEDS[0], st=pot.step;
+    return {url:potInviteUrl(m.nick,pot), img:location.origin+"/og/p/"+sd.k+"-"+potState(st)+".png",
+            title:m.nick+"님의 "+sd.n+josaIGA(sd.n)+(st>=100?" 다 자랐어요! 🎉":" "+st+"단계까지 자랐어요! 🌱")};
+  }
+  return {url:CONFIG.SHARE_URL+"?go=2", img:"", title:""};
+}
+function curShare(){ return shareLink ? {url:shareLink, img:shareImg, title:shareTitle} : resultShare(); }
 function shareKakao(){
   const K = window.Kakao;
-  const url = shareLink || CONFIG.SHARE_URL;
+  const cs = curShare(), url = cs.url;
   if(K && CONFIG.KAKAO_JS_KEY){
     if(!K.isInitialized()) K.init(CONFIG.KAKAO_JS_KEY);
     K.Share.sendDefault({
       objectType:"feed",
       content:{
-        title:(shareLink&&shareTitle)||"화분 키우기",
+        title:cs.title||"화분 키우기",
         description:shareMsg,
-        imageUrl:(shareLink&&shareImg)||"https://memejalal.memejalal2026.workers.dev/og.png",
+        imageUrl:cs.img||"https://memejalal.memejalal2026.workers.dev/og-main.png",
         link:{mobileWebUrl:url, webUrl:url}
       },
       buttons:[{title:shareLink?"나도 화분 키우기":"나도 도전하기", link:{mobileWebUrl:url, webUrl:url}}]
@@ -1480,11 +1491,11 @@ function shareKakao(){
   }else copyLink();
 }
 function shareX(){
-  const url = "https://twitter.com/intent/tweet?text="+encodeURIComponent(shareMsg)+"&url="+encodeURIComponent(shareLink || CONFIG.SHARE_URL);
+  const url = "https://twitter.com/intent/tweet?text="+encodeURIComponent(shareMsg)+"&url="+encodeURIComponent(curShare().url);
   window.open(url,"_blank","noopener");
 }
 function copyLink(){
-  const txt = shareMsg+"\n"+(shareLink || CONFIG.SHARE_URL);
+  const txt = shareMsg+"\n"+curShare().url;
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(()=>toast("링크가 복사됐어요!"),()=>fallbackCopy(txt));
   }else fallbackCopy(txt);
