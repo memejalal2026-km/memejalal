@@ -1,7 +1,7 @@
 {
- "name": "밈잘알?",
- "short_name": "밈잘알?",
- "description": "너, 밈 좀 아냐? 5초 안에 증명해!",
+ "name": "화분 키우기",
+ "short_name": "화분 키우기",
+ "description": "퀴즈 풀고 물 주고, 나만의 화분을 키워요!",
  "start_url": "./",
  "display": "standalone",
  "background_color": "#fff7d6",

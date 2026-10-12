@@ -1,5 +1,7 @@
 {
   "name": "memejalal",
+  "main": "worker.js",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./" }
+  // 첫 화면(/)만 worker.js가 먼저 받아서 화분 공유 링크의 미리보기를 바꿔요. 나머지 파일은 그대로 서빙.
+  "assets": { "directory": "./", "binding": "ASSETS", "run_worker_first": ["/", "/index.html"] }
 }
