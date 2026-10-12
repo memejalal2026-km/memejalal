@@ -19,9 +19,9 @@ const OUT = path.join(__dirname, '..', 'data');
     const lines = [["번호","난이도","문제","정답","오답1","오답2","오답3","그림","세부 분류"]];
     rows.forEach(r=>{ const ans=r.o[r.a], wrong=r.o.filter((_,i)=>i!==r.a);
       lines.push([r.id, r.l, r.q, ans, wrong[0]||"", wrong[1]||"", wrong[2]||"", r.img ? SITE + r.img : "", r.t]); });
-    fs.writeFileSync(path.join(OUT, `q-${c.k}.csv`), "﻿" + lines.map(l=>l.map(esc).join(",")).join("\n") + "\n");
+    fs.writeFileSync(path.join(OUT, `q-${c.k}.csv`), lines.map(l=>l.map(esc).join(",")).join("\n") + "\n");
     summary.push([c.n, c.k, rows.length]);
   }
-  fs.writeFileSync(path.join(OUT, "q-summary.csv"), "﻿" + summary.map(l=>l.map(esc).join(",")).join("\n") + "\n");
+  fs.writeFileSync(path.join(OUT, "q-summary.csv"), summary.map(l=>l.map(esc).join(",")).join("\n") + "\n");
   console.log(summary.map(s=>s.join(":")).join("  "), " 합계", data.rows.length);
 })();
