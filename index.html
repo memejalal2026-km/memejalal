@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="화분 키우기">
 <!-- 배포 후 아래 OG 태그의 이미지를 실제 주소로 바꿔주세요 (공유 미리보기용) -->
 <meta property="og:title" content="화분 키우기">
-<meta property="og:description" content="퀴즈 풀고 물 주고, 나만의 화분을 키워요! 상식·넌센스·속담·영어·사자성어·국기·신조어·밈">
+<meta property="og:description" content="퀴즈 풀고 물 주고, 나만의 화분을 키워요! 상식·넌센스·속담·영어·사자성어·국기·신조어·밈·맞춤법·초성·이모지">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://memejalal.memejalal2026.workers.dev/og-main.png">
 <meta property="og:image:width" content="1200">
@@ -111,6 +111,8 @@
   .snd{position:fixed;top:10px;right:10px;z-index:30;width:44px;height:44px;font-size:20px;background:#fff;border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink)}
   .snd:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
   .qtext{font-size:21px;font-weight:700;line-height:1.5;margin-bottom:18px;word-break:keep-all}
+  .qtext .qbig{display:inline-block;font-size:44px;line-height:1.3;letter-spacing:4px;margin:4px 0}
+  .btn.daily{background:#3fbf5a}
   .opt{display:block;width:100%;text-align:left;padding:14px;margin-bottom:10px;font-size:16px;background:#f3f0ff;color:var(--text);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
   .opt:hover:not(:disabled){background:#e8e2ff}
   .opt:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
@@ -226,14 +228,18 @@
     </div>
 
     <ul class="rules">
-      <li>🌱 한 판마다 물 <b>1방울</b> 💧, <b>만점이면 2방울</b> 💧💧! 100단계까지 키워요.</li>
-      <li>🎲 <b>8가지 퀴즈</b> : 상식·넌센스·속담·영어단어·사자성어·국기·신조어·밈</li>
+      <li>🌱 한 판마다 물 <b>1방울</b> 💧, <b>만점이면 2방울</b> 💧💧! 출석·오늘의 문제·연속 만점 보너스도 있어요.</li>
+      <li>🎲 <b>11가지 퀴즈</b> : 상식·넌센스·속담·영어단어·사자성어·국기·신조어·밈·맞춤법·초성·이모지</li>
       <li>🙋 <b>혼자</b> 5문제 (틀리면 탈락) · ⚔️ <b>친구</b>와 번갈아 대결 (틀리면 벌칙 🎯)</li>
     </ul>
 
     <div class="btn-row modes">
       <button class="btn" id="btn-solo">🙋 혼자 하기</button>
       <button class="btn friend" id="btn-friend">⚔️ VS 친구</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn daily" id="btn-daily">📅 오늘의 문제</button>
+      <button class="btn ghost" id="btn-wrong">📝 오답 노트</button>
     </div>
     <div class="btn-row">
       <button class="btn ghost" id="btn-join">👤 회원가입</button>
@@ -250,7 +256,7 @@
   <section id="screen-cat" class="card hidden">
     <h2 id="cat-title">🙋 혼자 하기</h2>
     <p class="tag">어떤 퀴즈를 풀까요?</p>
-    <button class="btn" id="cat-rand">🎲 랜덤으로 풀기<small>8가지 퀴즈를 골고루 섞어서</small></button>
+    <button class="btn" id="cat-rand">🎲 랜덤으로 풀기<small>11가지 퀴즈를 골고루 섞어서</small></button>
     <p class="modehint" style="margin:16px 0 8px">또는 <b>종류 골라서 풀기</b></p>
     <div class="catgrid" id="cat-grid"></div>
     <button class="btn ghost" id="cat-back">뒤로</button>
@@ -456,6 +462,10 @@ const CONFIG = {
   QUESTIONS_PER_GAME: 5,     // 혼자 하기 문제 수
   WATER_NORMAL: 1,           // 한 판 끝낼 때 주는 물 (틀려도)
   WATER_PERFECT: 2,          // 만점(전부 정답)일 때 주는 물
+  WATER_ATTEND: 1,           // 출석 보상 (하루 첫 접속, 회원)
+  WATER_DAILY: 1,            // 오늘의 문제 보너스 (하루 한 번)
+  WATER_COMBO: 1,            // 연속 만점 보너스
+  COMBO_MIN: 3,              // 몇 연속 만점부터 보너스를 줄지
   TIME_LIMIT_SOLO: 5,        // 혼자 하기: 문제당 제한 시간(초)
   TIME_LIMIT_PARTY: 5,       // 친구 대결: 문제당 제한 시간(초)
   MIN_PLAYERS: 2,
@@ -1548,6 +1558,162 @@ const BANK2 = [  /* 자동 생성: tools/new_categories.py 를 고친 뒤 다시
   {"id": "SL051", "k": "slang", "l": 2, "q": "'좋댓구알'의 뜻은?", "o": ["좋아요·댓글·구독·알림 설정", "좋은 댓글 구하기", "좋은 대구 알", "좋아하는 대학 구경"], "a": 0, "c": 1},
   {"id": "SL052", "k": "slang", "l": 2, "q": "'N잡러'의 뜻은?", "o": ["여러 직업을 가진 사람", "잡지를 모으는 사람", "직업이 없는 사람", "N번째 직장인"], "a": 0, "c": 1},
   {"id": "SL053", "k": "slang", "l": 3, "q": "'나일리지'의 뜻은?", "o": ["나이를 내세워 대접받으려 함", "나일강 여행 적립금", "나이가 어린 사람", "항공 마일리지"], "a": 0, "c": 1},
+  {"id": "SP001", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["웬일이야?", "왠일이야?", "웬닐이야?", "왼일이야?"], "a": 0, "c": 1},
+  {"id": "SP002", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["왠지 기분이 좋아", "웬지 기분이 좋아", "왠찌 기분이 좋아", "웬찌 기분이 좋아"], "a": 0, "c": 1},
+  {"id": "SP003", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["어이없다", "어의없다", "어이업다", "어의업다"], "a": 0, "c": 1},
+  {"id": "SP004", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["금세 끝났다", "금새 끝났다", "금쇄 끝났다", "금셰 끝났다"], "a": 0, "c": 1},
+  {"id": "SP005", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["며칠 동안", "몇일 동안", "몇 일 동안", "며칟 동안"], "a": 0, "c": 1},
+  {"id": "SP006", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["설거지", "설겆이", "설걷이", "설거찌"], "a": 0, "c": 1},
+  {"id": "SP007", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["오랜만에 만났다", "오랫만에 만났다", "오랜마네 만났다", "오랫마네 만났다"], "a": 0, "c": 1},
+  {"id": "SP008", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["굳이 안 해도 돼", "구지 안 해도 돼", "궂이 안 해도 돼", "굿이 안 해도 돼"], "a": 0, "c": 1},
+  {"id": "SP009", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["역할", "역활", "역핧", "녁할"], "a": 0, "c": 1},
+  {"id": "SP010", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["희한하다", "희안하다", "히한하다", "히안하다"], "a": 0, "c": 1},
+  {"id": "SP011", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["일부러 그랬어", "일부로 그랬어", "일버러 그랬어", "일뿌러 그랬어"], "a": 0, "c": 1},
+  {"id": "SP012", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["내일 할게요", "내일 할께요", "내일 할깨요", "내일 핫게요"], "a": 0, "c": 1},
+  {"id": "SP013", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["그러면 안 돼", "그러면 안 되", "그러면 않 돼", "그러면 않 되"], "a": 0, "c": 1},
+  {"id": "SP014", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["밥을 먹지 않았다", "밥을 먹지 안았다", "밥을 먹지 않앗다", "밥을 먹지 안앗다"], "a": 0, "c": 1},
+  {"id": "SP015", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["감기가 다 나았다", "감기가 다 낳았다", "감기가 다 낫았다", "감기가 다 났았다"], "a": 0, "c": 1},
+  {"id": "SP016", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["정답을 맞혔다", "정답을 맞췄다", "정답을 마쳤다", "정답을 맞쳤다"], "a": 0, "c": 1},
+  {"id": "SP017", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["사과든지 배든지 골라", "사과던지 배던지 골라", "사과든디 배든디 골라", "사과던디 배던디 골라"], "a": 0, "c": 1},
+  {"id": "SP018", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["나의 바람은 건강이야", "나의 바램은 건강이야", "나의 바래임은 건강이야", "나의 바람이은 건강이야"], "a": 0, "c": 1},
+  {"id": "SP019", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["이제 어떡해?", "이제 어떻해?", "이제 어덯해?", "이제 어떡혀?"], "a": 0, "c": 1},
+  {"id": "SP020", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["어떻게 할까?", "어떡게 할까?", "어떻개 할까?", "어떡개 할까?"], "a": 0, "c": 1},
+  {"id": "SP021", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["카드로 결제했다", "카드로 결재했다", "카드로 결쩨했다", "카드로 결체했다"], "a": 0, "c": 1},
+  {"id": "SP022", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["사과의 개수", "사과의 갯수", "사과의 개쑤", "사과의 갰수"], "a": 0, "c": 1},
+  {"id": "SP023", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["내일 봬요", "내일 뵈요", "내일 뵈여", "내일 봐여요"], "a": 0, "c": 1},
+  {"id": "SP024", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["웬만하면 와", "왠만하면 와", "웬마나면 와", "왠마나면 와"], "a": 0, "c": 1},
+  {"id": "SP025", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["깨끗이 씻어", "깨끗히 씻어", "깨끄시 씻어", "깨끗티 씻어"], "a": 0, "c": 1},
+  {"id": "SP026", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["꼼꼼히 봐", "꼼꼼이 봐", "꼼꼬미 봐", "꼼꼼희 봐"], "a": 0, "c": 1},
+  {"id": "SP027", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["틈틈이 공부해", "틈틈히 공부해", "틈트미 공부해", "틈틈희 공부해"], "a": 0, "c": 1},
+  {"id": "SP028", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["솔직히 말해", "솔직이 말해", "솔지기 말해", "솔직희 말해"], "a": 0, "c": 1},
+  {"id": "SP029", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["곰곰이 생각해", "곰곰히 생각해", "곰고미 생각해", "곰곰희 생각해"], "a": 0, "c": 1},
+  {"id": "SP030", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["일일이 확인해", "일일히 확인해", "일리리 확인해", "일일희 확인해"], "a": 0, "c": 1},
+  {"id": "SP031", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["해코지", "해꼬지", "해코치", "헤코지"], "a": 0, "c": 1},
+  {"id": "SP032", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["육개장", "육계장", "육게장", "육깨장"], "a": 0, "c": 1},
+  {"id": "SP033", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["김치찌개", "김치찌게", "김치찌깨", "김치지개"], "a": 0, "c": 1},
+  {"id": "SP034", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["떡볶이", "떡볶기", "떡복이", "떡뽁이"], "a": 0, "c": 1},
+  {"id": "SP035", "k": "spell", "l": 3, "q": "맞춤법이 올바른 것은?", "o": ["순댓국", "순대국", "순대꾹", "순댓꾹"], "a": 0, "c": 1},
+  {"id": "SP036", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["설렘", "설레임", "설래임", "설램"], "a": 0, "c": 1},
+  {"id": "SP037", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["길을 헤매다", "길을 헤메다", "길을 해매다", "길을 해메다"], "a": 0, "c": 1},
+  {"id": "SP038", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["베개", "배개", "베게", "배게"], "a": 0, "c": 1},
+  {"id": "SP039", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["휴게실", "휴계실", "휴개실", "휴께실"], "a": 0, "c": 1},
+  {"id": "SP040", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["선생님이 수학을 가르치다", "선생님이 수학을 가리키다", "선생님이 수학을 가르키다", "선생님이 수학을 가리치다"], "a": 0, "c": 1},
+  {"id": "SP041", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["지갑을 잃어버렸다", "지갑을 잊어버렸다", "지갑을 이러버렸다", "지갑을 잃어버렷다"], "a": 0, "c": 1},
+  {"id": "SP042", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["너와 나는 생각이 다르다", "너와 나는 생각이 틀리다", "너와 나는 생각이 다르따", "너와 나는 생각이 틀르다"], "a": 0, "c": 1},
+  {"id": "SP043", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["우체국에서 편지를 부쳤다", "우체국에서 편지를 붙였다", "우체국에서 편지를 부첬다", "우체국에서 편지를 붙쳤다"], "a": 0, "c": 1},
+  {"id": "SP044", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["이따가 만나", "있다가 만나", "이따까 만나", "있따가 만나"], "a": 0, "c": 1},
+  {"id": "SP045", "k": "spell", "l": 3, "q": "맞춤법이 올바른 것은?", "o": ["오뚝이", "오뚜기", "오똑이", "오뚜끼"], "a": 0, "c": 1},
+  {"id": "SP046", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["위험을 무릅쓰고", "위험을 무릎쓰고", "위험을 무릅스고", "위험을 무릎스고"], "a": 0, "c": 1},
+  {"id": "SP047", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["눈곱", "눈꼽", "눈꼽재기", "눈곱이"], "a": 0, "c": 1},
+  {"id": "SP048", "k": "spell", "l": 3, "q": "맞춤법이 올바른 것은?", "o": ["내로라하는 선수", "내노라하는 선수", "내로라허는 선수", "내노라허는 선수"], "a": 0, "c": 1},
+  {"id": "SP049", "k": "spell", "l": 3, "q": "맞춤법이 올바른 것은?", "o": ["쩨쩨하다", "째째하다", "쩨째하다", "째쩨하다"], "a": 0, "c": 1},
+  {"id": "SP050", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["행복하길 바라요", "행복하길 바래요", "행복하길 바레요", "행복하길 바랴요"], "a": 0, "c": 1},
+  {"id": "SP051", "k": "spell", "l": 1, "q": "맞춤법이 올바른 것은?", "o": ["어쨌든 해 보자", "어쨋든 해 보자", "어쨌던 해 보자", "어쨋던 해 보자"], "a": 0, "c": 1},
+  {"id": "SP052", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["편의점에 들렀다", "편의점에 들렸다", "편의점에 들럿다", "편의점에 들렷다"], "a": 0, "c": 1},
+  {"id": "SP053", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["시험을 치렀다", "시험을 치뤘다", "시험을 치럿다", "시험을 치뤗다"], "a": 0, "c": 1},
+  {"id": "SP054", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["김치를 담갔다", "김치를 담궜다", "김치를 담갓다", "김치를 담궛다"], "a": 0, "c": 1},
+  {"id": "SP055", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["문을 잠갔다", "문을 잠궜다", "문을 잠갓다", "문을 잠궛다"], "a": 0, "c": 1},
+  {"id": "SP056", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["마음이 설렌다", "마음이 설레인다", "마음이 설랜다", "마음이 설래인다"], "a": 0, "c": 1},
+  {"id": "SP057", "k": "spell", "l": 3, "q": "맞춤법이 올바른 것은?", "o": ["흡연을 삼가 주세요", "흡연을 삼가해 주세요", "흡연을 삼카 주세요", "흡연을 삼가하여 주세요"], "a": 0, "c": 1},
+  {"id": "SP058", "k": "spell", "l": 2, "q": "맞춤법이 올바른 것은?", "o": ["둘이 사귀어", "둘이 사겨", "둘이 사기어", "둘이 사귀여"], "a": 0, "c": 1},
+  {"id": "CH001", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동물]\nㅎㄹㅇ", "o": ["호랑이", "코끼리", "원숭이", "강아지"], "a": 0, "c": 1},
+  {"id": "CH002", "k": "chosung", "l": 2, "q": "초성 퀴즈! [동물]\nㄱㅅㄷㅊ", "o": ["고슴도치", "다람쥐", "너구리", "두더지"], "a": 0, "c": 1},
+  {"id": "CH003", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동물]\nㅋㄲㄹ", "o": ["코끼리", "호랑이", "기린", "하마"], "a": 0, "c": 1},
+  {"id": "CH004", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동물]\nㄷㄹㅈ", "o": ["다람쥐", "두더지", "돌고래", "독수리"], "a": 0, "c": 1},
+  {"id": "CH005", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동물]\nㅇㅅㅇ", "o": ["원숭이", "오소리", "코알라", "여우"], "a": 0, "c": 1},
+  {"id": "CH006", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동물]\nㅍㄱ", "o": ["펭귄", "판다", "표범", "오리"], "a": 0, "c": 1},
+  {"id": "CH007", "k": "chosung", "l": 2, "q": "초성 퀴즈! [동물]\nㄷㄱㄹ", "o": ["돌고래", "독수리", "두루미", "도마뱀"], "a": 0, "c": 1},
+  {"id": "CH008", "k": "chosung", "l": 2, "q": "초성 퀴즈! [동물]\nㄱㅇㅇ", "o": ["고양이", "강아지", "기린", "거위"], "a": 0, "c": 1},
+  {"id": "CH009", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㅅㄱ", "o": ["사과", "수박", "자두", "포도"], "a": 0, "c": 1},
+  {"id": "CH010", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㅂㄴㄴ", "o": ["바나나", "파인애플", "복숭아", "블루베리"], "a": 0, "c": 1},
+  {"id": "CH011", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㄸㄱ", "o": ["딸기", "참외", "귤", "망고"], "a": 0, "c": 1},
+  {"id": "CH012", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㅂㅅㅇ", "o": ["복숭아", "바나나", "살구", "석류"], "a": 0, "c": 1},
+  {"id": "CH013", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㅅㅂ", "o": ["수박", "사과", "참외", "배"], "a": 0, "c": 1},
+  {"id": "CH014", "k": "chosung", "l": 2, "q": "초성 퀴즈! [과일]\nㅍㅇㅇㅍ", "o": ["파인애플", "포도", "오렌지", "블루베리"], "a": 0, "c": 1},
+  {"id": "CH015", "k": "chosung", "l": 1, "q": "초성 퀴즈! [과일]\nㄹㅁ", "o": ["레몬", "라임", "망고", "귤"], "a": 0, "c": 1},
+  {"id": "CH016", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㄸㅂㅇ", "o": ["떡볶이", "떡국", "불고기", "비빔밥"], "a": 0, "c": 1},
+  {"id": "CH017", "k": "chosung", "l": 2, "q": "초성 퀴즈! [음식]\nㄱㅊㅉㄱ", "o": ["김치찌개", "된장찌개", "부대찌개", "김치볶음밥"], "a": 0, "c": 1},
+  {"id": "CH018", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㅂㅂㅂ", "o": ["비빔밥", "볶음밥", "불고기", "김밥"], "a": 0, "c": 1},
+  {"id": "CH019", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㅂㄱㄱ", "o": ["불고기", "비빔밥", "삼겹살", "갈비"], "a": 0, "c": 1},
+  {"id": "CH020", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㅅㄱㅅ", "o": ["삼겹살", "삼계탕", "순대국", "소갈비"], "a": 0, "c": 1},
+  {"id": "CH021", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㅉㅈㅁ", "o": ["짜장면", "짬뽕", "잔치국수", "쫄면"], "a": 0, "c": 1},
+  {"id": "CH022", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㄷㄱㅅ", "o": ["돈가스", "닭갈비", "된장국", "떡꼬치"], "a": 0, "c": 1},
+  {"id": "CH023", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㅎㅂㄱ", "o": ["햄버거", "핫도그", "피자", "샌드위치"], "a": 0, "c": 1},
+  {"id": "CH024", "k": "chosung", "l": 1, "q": "초성 퀴즈! [음식]\nㄴㅁ", "o": ["냉면", "라면", "국수", "우동"], "a": 0, "c": 1},
+  {"id": "CH025", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㄷㅎㅁㄱ", "o": ["대한민국", "미국", "중국", "일본"], "a": 0, "c": 1},
+  {"id": "CH026", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅍㄹㅅ", "o": ["프랑스", "포르투갈", "폴란드", "핀란드"], "a": 0, "c": 1},
+  {"id": "CH027", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅇㅌㄹㅇ", "o": ["이탈리아", "인도네시아", "오스트리아", "아일랜드"], "a": 0, "c": 1},
+  {"id": "CH028", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅂㄹㅈ", "o": ["브라질", "벨기에", "불가리아", "베트남"], "a": 0, "c": 1},
+  {"id": "CH029", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅇㅈㅌ", "o": ["이집트", "인도", "이란", "영국"], "a": 0, "c": 1},
+  {"id": "CH030", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅋㄴㄷ", "o": ["캐나다", "칠레", "쿠바", "케냐"], "a": 0, "c": 1},
+  {"id": "CH031", "k": "chosung", "l": 1, "q": "초성 퀴즈! [나라]\nㅎㅈ", "o": ["호주", "헝가리", "홍콩", "한국"], "a": 0, "c": 1},
+  {"id": "CH032", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅂㅅㄱㅈ", "o": ["백설공주", "신데렐라", "인어공주", "잠자는 숲속의 공주"], "a": 0, "c": 1},
+  {"id": "CH033", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅎㅂㄴㅂ", "o": ["흥부놀부", "해님달님", "콩쥐팥쥐", "심청전"], "a": 0, "c": 1},
+  {"id": "CH034", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅅㄷㄹㄹ", "o": ["신데렐라", "백설공주", "피노키오", "라푼젤"], "a": 0, "c": 1},
+  {"id": "CH035", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅍㄴㅋㅇ", "o": ["피노키오", "피터팬", "신데렐라", "알라딘"], "a": 0, "c": 1},
+  {"id": "CH036", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅇㅇㄱㅈ", "o": ["인어공주", "백설공주", "신데렐라", "미녀와 야수"], "a": 0, "c": 1},
+  {"id": "CH037", "k": "chosung", "l": 1, "q": "초성 퀴즈! [동화]\nㅋㅈㅍㅈ", "o": ["콩쥐팥쥐", "흥부놀부", "해님달님", "선녀와 나무꾼"], "a": 0, "c": 1},
+  {"id": "CH038", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㅂㅌㅅㄴㄷ", "o": ["방탄소년단", "블랙핑크", "세븐틴", "트와이스"], "a": 0, "c": 1},
+  {"id": "CH039", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㅂㄹㅍㅋ", "o": ["블랙핑크", "방탄소년단", "뉴진스", "아이브"], "a": 0, "c": 1},
+  {"id": "CH040", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㅅㅂㅌ", "o": ["세븐틴", "샤이니", "소녀시대", "슈퍼주니어"], "a": 0, "c": 1},
+  {"id": "CH041", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㄴㅈㅅ", "o": ["뉴진스", "엔시티", "르세라핌", "아이브"], "a": 0, "c": 1},
+  {"id": "CH042", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㅌㅇㅇㅅ", "o": ["트와이스", "트레저", "투모로우바이투게더", "에스파"], "a": 0, "c": 1},
+  {"id": "CH043", "k": "chosung", "l": 1, "q": "초성 퀴즈! [가수]\nㅇㅇㅇ", "o": ["아이유", "에일리", "이효리", "태연"], "a": 0, "c": 1},
+  {"id": "CH044", "k": "chosung", "l": 1, "q": "초성 퀴즈! [스포츠]\nㅊㄱ", "o": ["축구", "야구", "농구", "배구"], "a": 0, "c": 1},
+  {"id": "CH045", "k": "chosung", "l": 1, "q": "초성 퀴즈! [스포츠]\nㄴㄱ", "o": ["농구", "배구", "축구", "탁구"], "a": 0, "c": 1},
+  {"id": "CH046", "k": "chosung", "l": 1, "q": "초성 퀴즈! [스포츠]\nㅌㄱ", "o": ["탁구", "당구", "배구", "족구"], "a": 0, "c": 1},
+  {"id": "CH047", "k": "chosung", "l": 1, "q": "초성 퀴즈! [스포츠]\nㅌㄴㅅ", "o": ["테니스", "탁구", "태권도", "볼링"], "a": 0, "c": 1},
+  {"id": "CH048", "k": "chosung", "l": 1, "q": "초성 퀴즈! [스포츠]\nㄱㅍ", "o": ["골프", "권투", "검도", "볼링"], "a": 0, "c": 1},
+  {"id": "CH049", "k": "chosung", "l": 1, "q": "초성 퀴즈! [직업]\nㅅㅅㄴ", "o": ["선생님", "소방관", "의사", "요리사"], "a": 0, "c": 1},
+  {"id": "CH050", "k": "chosung", "l": 1, "q": "초성 퀴즈! [직업]\nㄱㅎㅅ", "o": ["간호사", "경찰관", "기자", "가수"], "a": 0, "c": 1},
+  {"id": "CH051", "k": "chosung", "l": 1, "q": "초성 퀴즈! [직업]\nㅅㅂㄱ", "o": ["소방관", "선생님", "경찰관", "미용사"], "a": 0, "c": 1},
+  {"id": "CH052", "k": "chosung", "l": 1, "q": "초성 퀴즈! [직업]\nㄱㅊㄱ", "o": ["경찰관", "소방관", "간호사", "외교관"], "a": 0, "c": 1},
+  {"id": "CH053", "k": "chosung", "l": 1, "q": "초성 퀴즈! [직업]\nㅇㄹㅅ", "o": ["요리사", "약사", "의사", "미용사"], "a": 0, "c": 1},
+  {"id": "CH054", "k": "chosung", "l": 2, "q": "초성 퀴즈! [영화]\nㄱㅇㅇㄱ", "o": ["겨울왕국", "기생충", "극한직업", "국제시장"], "a": 0, "c": 1},
+  {"id": "CH055", "k": "chosung", "l": 2, "q": "초성 퀴즈! [영화]\nㅂㅅㅎ", "o": ["부산행", "베테랑", "범죄도시", "박하사탕"], "a": 0, "c": 1},
+  {"id": "CH056", "k": "chosung", "l": 2, "q": "초성 퀴즈! [영화]\nㄱㅅㅊ", "o": ["기생충", "괴물", "곡성", "겨울왕국"], "a": 0, "c": 1},
+  {"id": "EM001", "k": "emoji", "l": 1, "q": "🦁👑\n이 이모지가 뜻하는 영화는?", "o": ["라이온 킹", "겨울왕국", "알라딘", "정글북"], "a": 0, "c": 1},
+  {"id": "EM002", "k": "emoji", "l": 1, "q": "❄️👸⛄\n이 이모지가 뜻하는 영화는?", "o": ["겨울왕국", "백설공주", "라푼젤", "모아나"], "a": 0, "c": 1},
+  {"id": "EM003", "k": "emoji", "l": 1, "q": "🚢🧊💔\n이 이모지가 뜻하는 영화는?", "o": ["타이타닉", "해운대", "캐리비안의 해적", "니모를 찾아서"], "a": 0, "c": 1},
+  {"id": "EM004", "k": "emoji", "l": 1, "q": "🦖🏝️\n이 이모지가 뜻하는 영화는?", "o": ["쥬라기 공원", "킹콩", "아바타", "트랜스포머"], "a": 0, "c": 1},
+  {"id": "EM005", "k": "emoji", "l": 1, "q": "🐼🥋\n이 이모지가 뜻하는 영화는?", "o": ["쿵푸팬더", "라이온 킹", "주토피아", "마다가스카르"], "a": 0, "c": 1},
+  {"id": "EM006", "k": "emoji", "l": 1, "q": "🐠🔍\n이 이모지가 뜻하는 영화는?", "o": ["니모를 찾아서", "인어공주", "모아나", "아쿠아맨"], "a": 0, "c": 1},
+  {"id": "EM007", "k": "emoji", "l": 1, "q": "🪔🧞\n이 이모지가 뜻하는 영화는?", "o": ["알라딘", "라이온 킹", "뮬란", "겨울왕국"], "a": 0, "c": 1},
+  {"id": "EM008", "k": "emoji", "l": 1, "q": "🧟🚆\n이 이모지가 뜻하는 영화는?", "o": ["부산행", "설국열차", "괴물", "곡성"], "a": 0, "c": 1},
+  {"id": "EM009", "k": "emoji", "l": 1, "q": "🕷️🕸️🦸\n이 이모지가 뜻하는 영화는?", "o": ["스파이더맨", "배트맨", "아이언맨", "앤트맨"], "a": 0, "c": 1},
+  {"id": "EM010", "k": "emoji", "l": 1, "q": "🦇🌃\n이 이모지가 뜻하는 영화는?", "o": ["배트맨", "스파이더맨", "드라큘라", "슈퍼맨"], "a": 0, "c": 1},
+  {"id": "EM011", "k": "emoji", "l": 2, "q": "🍫🏭\n이 이모지가 뜻하는 영화는?", "o": ["찰리와 초콜릿 공장", "해리 포터", "나니아 연대기", "마틸다"], "a": 0, "c": 1},
+  {"id": "EM012", "k": "emoji", "l": 1, "q": "⚡👓🧹\n이 이모지가 뜻하는 영화는?", "o": ["해리 포터", "반지의 제왕", "나니아 연대기", "마틸다"], "a": 0, "c": 1},
+  {"id": "EM013", "k": "emoji", "l": 1, "q": "🤖🚗\n이 이모지가 뜻하는 영화는?", "o": ["트랜스포머", "아이언맨", "월-E", "터미네이터"], "a": 0, "c": 1},
+  {"id": "EM014", "k": "emoji", "l": 2, "q": "🐀🍲\n이 이모지가 뜻하는 영화는?", "o": ["라따뚜이", "주토피아", "미키 마우스", "스튜어트 리틀"], "a": 0, "c": 1},
+  {"id": "EM015", "k": "emoji", "l": 2, "q": "🎈🏠\n이 이모지가 뜻하는 영화는?", "o": ["업", "토이 스토리", "인사이드 아웃", "코코"], "a": 0, "c": 1},
+  {"id": "EM016", "k": "emoji", "l": 1, "q": "🐻🍯\n이 이모지가 뜻하는 만화는?", "o": ["곰돌이 푸", "패딩턴", "뽀로로", "짱구"], "a": 0, "c": 1},
+  {"id": "EM017", "k": "emoji", "l": 1, "q": "🐧👓❄️\n이 이모지가 뜻하는 만화는?", "o": ["뽀로로", "펭수", "핑구", "해피 피트"], "a": 0, "c": 1},
+  {"id": "EM018", "k": "emoji", "l": 1, "q": "🐮🏠🔧\n이 이모지가 뜻하는 속담은?", "o": ["소 잃고 외양간 고친다", "소 귀에 경 읽기", "말 한마디로 천 냥 빚 갚는다", "우물 안 개구리"], "a": 0, "c": 1},
+  {"id": "EM019", "k": "emoji", "l": 1, "q": "🐒🌳⬇️\n이 이모지가 뜻하는 속담은?", "o": ["원숭이도 나무에서 떨어진다", "오르지 못할 나무는 쳐다보지도 마라", "고래 싸움에 새우 등 터진다", "등잔 밑이 어둡다"], "a": 0, "c": 1},
+  {"id": "EM020", "k": "emoji", "l": 1, "q": "🐋🐋🦐💥\n이 이모지가 뜻하는 속담은?", "o": ["고래 싸움에 새우 등 터진다", "원숭이도 나무에서 떨어진다", "소 잃고 외양간 고친다", "빈 수레가 요란하다"], "a": 0, "c": 1},
+  {"id": "EM021", "k": "emoji", "l": 1, "q": "🐯🗣️\n이 이모지가 뜻하는 속담은?", "o": ["호랑이도 제 말 하면 온다", "호랑이 굴에 들어가야 호랑이 새끼를 잡는다", "하룻강아지 범 무서운 줄 모른다", "고양이 목에 방울 달기"], "a": 0, "c": 1},
+  {"id": "EM022", "k": "emoji", "l": 1, "q": "🍉👅\n이 이모지가 뜻하는 속담은?", "o": ["수박 겉 핥기", "그림의 떡", "누워서 떡 먹기", "식은 죽 먹기"], "a": 0, "c": 1},
+  {"id": "EM023", "k": "emoji", "l": 1, "q": "🖼️🍡\n이 이모지가 뜻하는 속담은?", "o": ["그림의 떡", "수박 겉 핥기", "꿩 대신 닭", "누워서 떡 먹기"], "a": 0, "c": 1},
+  {"id": "EM024", "k": "emoji", "l": 2, "q": "🐸🏠⭕\n이 이모지가 뜻하는 속담은?", "o": ["우물 안 개구리", "개구리 올챙이 적 생각 못 한다", "가재는 게 편", "소 귀에 경 읽기"], "a": 0, "c": 1},
+  {"id": "EM025", "k": "emoji", "l": 1, "q": "🐱🔔\n이 이모지가 뜻하는 속담은?", "o": ["고양이 목에 방울 달기", "호랑이도 제 말 하면 온다", "얌전한 고양이 부뚜막에 먼저 올라간다", "꿩 먹고 알 먹는다"], "a": 0, "c": 1},
+  {"id": "EM026", "k": "emoji", "l": 2, "q": "🐮👂📖\n이 이모지가 뜻하는 속담은?", "o": ["소 귀에 경 읽기", "소 잃고 외양간 고친다", "말 한마디로 천 냥 빚 갚는다", "가는 말이 고와야 오는 말이 곱다"], "a": 0, "c": 1},
+  {"id": "EM027", "k": "emoji", "l": 2, "q": "🪨🐦🐦\n이 이모지가 뜻하는 사자성어는?", "o": ["일석이조", "용두사미", "새옹지마", "우이독경"], "a": 0, "c": 1},
+  {"id": "EM028", "k": "emoji", "l": 2, "q": "🐉🐍\n이 이모지가 뜻하는 사자성어는?", "o": ["용두사미", "일석이조", "오리무중", "사면초가"], "a": 0, "c": 1},
+  {"id": "EM029", "k": "emoji", "l": 3, "q": "🐴👂💨\n이 이모지가 뜻하는 사자성어는?", "o": ["마이동풍", "우이독경", "새옹지마", "동문서답"], "a": 0, "c": 1},
+  {"id": "EM030", "k": "emoji", "l": 1, "q": "🍗🍺\n이 이모지가 뜻하는 음식은?", "o": ["치맥", "피맥", "삼겹살", "족발"], "a": 0, "c": 1},
+  {"id": "EM031", "k": "emoji", "l": 1, "q": "🧊🍧\n이 이모지가 뜻하는 음식은?", "o": ["빙수", "아이스크림", "슬러시", "팥죽"], "a": 0, "c": 1},
+  {"id": "EM032", "k": "emoji", "l": 1, "q": "🍞🥚\n이 이모지가 뜻하는 음식은?", "o": ["토스트", "김밥", "떡볶이", "라면"], "a": 0, "c": 1},
+  {"id": "EM033", "k": "emoji", "l": 1, "q": "☀️🕶️🏖️\n이 이모지가 뜻하는 계절은?", "o": ["여름", "겨울", "봄", "가을"], "a": 0, "c": 1},
+  {"id": "EM034", "k": "emoji", "l": 1, "q": "❄️⛄🧤\n이 이모지가 뜻하는 계절은?", "o": ["겨울", "여름", "봄", "가을"], "a": 0, "c": 1},
+  {"id": "EM035", "k": "emoji", "l": 1, "q": "🌸🌱🐝\n이 이모지가 뜻하는 계절은?", "o": ["봄", "여름", "가을", "겨울"], "a": 0, "c": 1},
+  {"id": "EM036", "k": "emoji", "l": 1, "q": "🍁🌰🎃\n이 이모지가 뜻하는 계절은?", "o": ["가을", "봄", "여름", "겨울"], "a": 0, "c": 1},
+  {"id": "EM037", "k": "emoji", "l": 1, "q": "🎂🎁🎉\n이 이모지가 뜻하는 날은?", "o": ["생일", "설날", "추석", "어버이날"], "a": 0, "c": 1},
+  {"id": "EM038", "k": "emoji", "l": 1, "q": "🎄🎅\n이 이모지가 뜻하는 날은?", "o": ["크리스마스", "설날", "추석", "어린이날"], "a": 0, "c": 1},
+  {"id": "EM039", "k": "emoji", "l": 1, "q": "🌕🍡\n이 이모지가 뜻하는 날은?", "o": ["추석", "설날", "단오", "크리스마스"], "a": 0, "c": 1},
+  {"id": "EM040", "k": "emoji", "l": 1, "q": "🧧🙇\n이 이모지가 뜻하는 날은?", "o": ["설날", "추석", "생일", "스승의 날"], "a": 0, "c": 1},
+  {"id": "EM041", "k": "emoji", "l": 2, "q": "🌹💐👩‍🏫\n이 이모지가 뜻하는 날은?", "o": ["스승의 날", "어린이날", "어버이날", "한글날"], "a": 0, "c": 1},
+  {"id": "EM042", "k": "emoji", "l": 1, "q": "🎈🧒🎠\n이 이모지가 뜻하는 날은?", "o": ["어린이날", "어버이날", "스승의 날", "한글날"], "a": 0, "c": 1},
   {"id": "FL001", "k": "flag", "l": 1, "q": "이 국기는 어느 나라?", "o": ["일본", "방글라데시", "대한민국", "중국"], "a": 0, "c": 1, "img": "img/flags/jp.svg"},
   {"id": "FL002", "k": "flag", "l": 1, "q": "이 국기는 어느 나라?", "o": ["프랑스", "네덜란드", "이탈리아", "러시아"], "a": 0, "c": 1, "img": "img/flags/fr.svg"},
   {"id": "FL003", "k": "flag", "l": 2, "q": "이 국기는 어느 나라?", "o": ["이탈리아", "아일랜드", "프랑스", "멕시코"], "a": 0, "c": 1, "img": "img/flags/it.svg"},
@@ -1636,9 +1802,12 @@ const CATS = [
   {k:"idiom",   n:"사자성어", e:"📜"},
   {k:"flag",    n:"국기",     e:"🚩"},
   {k:"slang",   n:"신조어",   e:"💬"},
-  {k:"meme",    n:"밈",       e:"😎"}
+  {k:"meme",    n:"밈",       e:"😎"},
+  {k:"spell",   n:"맞춤법",   e:"✏️"},
+  {k:"chosung", n:"초성",     e:"🔠"},
+  {k:"emoji",   n:"이모지",   e:"🧩"}
 ];
-const CAT_BY_NAME = {"상식":"common","넌센스":"nonsense","속담":"proverb","영어단어":"eng","영어":"eng","사자성어":"idiom","국기":"flag","신조어":"slang"};
+const CAT_BY_NAME = {"맞춤법":"spell","초성":"chosung","이모지":"emoji","상식":"common","넌센스":"nonsense","속담":"proverb","영어단어":"eng","영어":"eng","사자성어":"idiom","국기":"flag","신조어":"slang"};
 const SLANG_IDS = new Set(["Q001","Q002","Q003","Q004","Q007","Q008","Q012","Q132","Q152","Q154","Q155","Q156","Q159","Q181","Q182","Q183","Q184","Q185","Q186","Q187","Q188","Q189","Q190","Q191","Q192","Q193","Q194","Q195","Q196","Q197","Q198","Q200","Q201","Q202","Q203","Q204","Q205","Q206","Q208","Q209","Q213"]);
 BANK.forEach(x=>{ if(!x.k) x.k = (x.t==="신조어" || SLANG_IDS.has(x.id)) ? "slang" : "meme"; });
 BANK.push(...BANK2);
@@ -1788,6 +1957,10 @@ function pickQuestion(level, used, cat){
   const p = (withImg.length && Math.random() < (CONFIG.IMAGE_FIRST||0)) ? rand(withImg) : rand(pool);
   used.add(qkey(p));
   seen.add(qkey(p)); saveSeen(seen);
+  return makeQ(p);
+}
+/* 문제 DB 한 줄 → 게임에서 내는 문제 (보기는 매번 섞어요) */
+function makeQ(p){
   const useRaw = CONFIG.USE_ORIGINAL_MEMES && p.raw && p.ro;
   const o = useRaw ? p.ro : p.o;
   return {id:p.id||"", k:p.k||"", q:useRaw?p.rq:p.q, s:useRaw?(p.rs||""):(p.s||""), img:useRaw?p.raw:(p.img||""), opts:shuffle(o.map((text,k)=>({text,correct:k===p.a})))};
@@ -1880,7 +2053,9 @@ function startTimer(limit, onTimeout){
 
 function showQuestion(q, label, limit, done){
   $("qnum").textContent = label + (q.k ? " · " + catName(q.k) : "");
-  $("qtext").textContent = q.q;
+  // 이모지·초성처럼 한 줄을 크게 보여 줄 문제는 줄을 나눠 표시
+  $("qtext").innerHTML = String(q.q).split("\n").map(line=>{ const big=/^[ㄱ-ㅎ\s]+$/.test(line) || !/[가-힣A-Za-z0-9]/.test(line);
+    return `<span class="${big?"qbig":""}">${escHtml(line)}</span>`; }).join("<br>");
   $("qsrc").textContent = q.s ? "출처: "+q.s : ""; $("qsrc").classList.toggle("hidden", !q.s);
   $("flash").textContent = "";
   const box = $("options"); box.innerHTML = "";
@@ -1901,6 +2076,7 @@ function showQuestion(q, label, limit, done){
     $("flash").textContent = ok ? "⭕ 정답!" : (timeout ? "⏰ 땡! 시간 초과!" : "❌ 땡!");
     if(!ok){ playDang(); const card = $("screen-quiz"); card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
     logEvent("q_result", (q.id||q.q.slice(0,30))+"|"+(ok?"o":(timeout?"t":"x")));
+    if(window.noteResult) noteResult(q, ok);
     done(ok, timeout);
   }
   let started = false;
@@ -1989,6 +2165,9 @@ function soloFinish(){
   const st = updateStreak(game.score);
   $("r-streak").innerHTML = st.html;
   if(st.cur>=2) shareMsg += `\n🔥 연속 만점 ${st.cur}회 중! 내 기록 깰 수 있어?`;
+  game.streak = st.cur;
+  if(game.daily){ game.dailyBonus = !dailyDone(); try{ localStorage.setItem("meme_daily", todayStr()); }catch(e){} refreshDailyBtn();
+    shareMsg = `📅 오늘의 문제 ${game.score}/${CONFIG.QUESTIONS_PER_GAME} - ${r.t} ${r.e}\n너도 오늘의 문제 풀어 봐!`; }
   if(window.afterSolo) afterSolo();
   show("result");
 }
@@ -2586,7 +2765,7 @@ function syncMe(){
       const c=sbc(); const m=me(); if(!c||!m) return;
       const r=await c.auth.getSession(); const ses=r&&r.data&&r.data.session; if(!ses) return;
       const d=m.data;
-      await c.from("profiles").update({plants:(d.coll||[]).length, pot_step:d.pot?(d.pot.step||0):0, data:{coll:d.coll||[], pot:d.pot||null}, last_seen:new Date().toISOString()}).eq("id",ses.user.id);
+      await c.from("profiles").update({plants:(d.coll||[]).length, pot_step:d.pot?(d.pot.step||0):0, data:{coll:d.coll||[], pot:d.pot||null, att:d.att||""}, last_seen:new Date().toISOString()}).eq("id",ses.user.id);
     }catch(e){}
   },1500);
 }
@@ -2595,6 +2774,7 @@ function mergeRemote(local, remote){
   (local.coll||[]).concat((remote&&remote.coll)||[]).forEach(x=>{ const k=JSON.stringify(x); if(!seen.has(k)){ seen.add(k); coll.push(x); } });
   const a=local.pot, b=remote&&remote.pot;
   local.coll=coll; local.pot=(a&&b)?((b.step||0)>(a.step||0)?b:a):(a||b||null);
+  if(remote && remote.att && String(remote.att)>String(local.att||"")) local.att=remote.att;
 }
 
 /* --- 회원가입 / 로그인 --- */
@@ -2648,7 +2828,7 @@ async function doAuth(signup){
     }
     setMe(nick); toast(nick+"님 어서 와요!");
   }
-  $("m-pw").value=""; logMember(); syncMe(); openGarden();
+  $("m-pw").value=""; logMember(); syncMe(); checkAttend(); openGarden();
 }
 $("m-login").onclick=()=>doAuth(false);
 $("m-signup").onclick=()=>doAuth(true);
@@ -2762,11 +2942,13 @@ function afterSolo(){
   else{
     // 물 규칙: 만점(5문제 모두 정답)이면 2방울, 그 외에는 1방울
     const full = !!(game && game.mode==="solo" && game.score>=CONFIG.QUESTIONS_PER_GAME);
-    const drops = full ? CONFIG.WATER_PERFECT : CONFIG.WATER_NORMAL;
+    let drops = full ? CONFIG.WATER_PERFECT : CONFIG.WATER_NORMAL; const extra=[];
+    if(full && (game.streak||0)>=CONFIG.COMBO_MIN){ drops+=CONFIG.WATER_COMBO; extra.push(`🔥 ${game.streak}연속 만점 +${CONFIG.WATER_COMBO}`); }
+    if(game.dailyBonus){ drops+=CONFIG.WATER_DAILY; extra.push(`📅 오늘의 문제 +${CONFIG.WATER_DAILY}`); }
     const before=potState(pot.step);
     updateMe(d=>{ d.pot.step=Math.min(100,d.pot.step+drops); });
     pot.step=Math.min(100,pot.step+drops);
-    const w = full ? `💧💧 만점 보너스! 물 ${drops}방울!` : `💧 물 ${drops}방울!`;
+    const w = (full ? `💧💧 만점 보너스! 물 ${drops}방울!` : `💧 물 ${drops}방울!`) + (extra.length ? `<br><small>${extra.join(" · ")}</small>` : "");
     msg=pot.step>=100?w+" 🎉 완성했어요!":(potState(pot.step)!==before?w+" ✨ 화분이 자랐어요!":w);
   }
   box.innerHTML=`<div class="sprite">${plantSVG(sd,pot.step,96)}</div><b>${msg}</b><br>${sd.n} ${pot.step} / 100 단계<div class="row2"><button class="btn ghost" id="rg-view">🌱 화분 보기</button><button class="btn brag" id="rg-share">📸 자랑하기</button></div>`;
@@ -2910,6 +3092,44 @@ $("pshare").onclick=e=>{ if(e.target.id==="pshare") closePotShare(); };
   const tick=()=>{ el.innerHTML=plantSVG(sd,steps[i],72); i++; if(i>=steps.length){ i=0; sd=rand(seeds); } };
   tick(); setInterval(tick, 900);
 })();
+
+/* ============ 게임 기능: 출석 물방울 · 오늘의 문제 · 연속 만점 보너스 · 오답 노트 ============ */
+const todayStr = ()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+/* 출석 물방울: 회원이 하루 첫 접속 때 화분에 물 1방울 */
+function checkAttend(){
+  const m=me(); if(!m || !m.data.pot || m.data.pot.step>=100) return;
+  const t=todayStr(); if(m.data.att===t) return;
+  updateMe(d=>{ d.att=t; d.pot.step=Math.min(100,d.pot.step+CONFIG.WATER_ATTEND); });
+  setTimeout(()=>toast(`🌞 출석 보상! 물 ${CONFIG.WATER_ATTEND}방울 💧`),400);
+}
+/* 오늘의 문제: 날짜로 정해지는 5문제 (모두에게 같은 문제), 하루 한 번 보너스 물 */
+function seededRand(str){ let h=2166136261>>>0; for(const ch of str){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619)>>>0; } if(!h) h=1;
+  return ()=>{ h^=h<<13; h>>>=0; h^=h>>>17; h^=h<<5; h>>>=0; return h/4294967296; }; }
+function dailyQs(){
+  const r=seededRand("daily-"+todayStr());
+  const pool=BANK.filter(x=>x.id && !/^P/.test(x.id) && !x.pending);
+  const ks=[...new Set(pool.map(x=>x.k))].sort();
+  for(let i=ks.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [ks[i],ks[j]]=[ks[j],ks[i]]; }
+  return ks.slice(0,CONFIG.QUESTIONS_PER_GAME).map(k=>{ const it=pool.filter(x=>x.k===k).sort((a,b)=>a.id<b.id?-1:1); return makeQ(it[Math.floor(r()*it.length)]); });
+}
+function dailyDone(){ try{ return localStorage.getItem("meme_daily")===todayStr(); }catch(e){ return false; } }
+function refreshDailyBtn(){ const b=$("btn-daily"); if(b) b.textContent = dailyDone() ? "📅 오늘의 문제 ✅" : "📅 오늘의 문제"; }
+function startDaily(){ logEvent("solo_start"); game={mode:"solo", daily:true, qs:dailyQs(), idx:0, score:0}; soloQuestion(); }
+/* 오답 노트: 틀린 문제를 기억했다가 다시 풀기 (맞히면 노트에서 빠져요) */
+function loadWrong(){ try{ const a=JSON.parse(localStorage.getItem("meme_wrong")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveWrong(a){ try{ localStorage.setItem("meme_wrong", JSON.stringify(a.slice(-60))); }catch(e){} refreshWrongBtn(); }
+function noteResult(q, ok){ if(!q || !q.id || /^P/.test(q.id)) return; const a=loadWrong().filter(x=>x!==q.id); if(!ok) a.push(q.id); saveWrong(a); }
+function refreshWrongBtn(){ const b=$("btn-wrong"); if(!b) return; const n=loadWrong().length; b.textContent = "📝 오답 노트" + (n?` (${n})`:""); }
+function startWrong(){
+  const ids=shuffle(loadWrong()).slice(0,CONFIG.QUESTIONS_PER_GAME);
+  const qs=ids.map(id=>BANK.find(x=>x.id===id)).filter(Boolean).map(makeQ);
+  if(!qs.length){ toast("아직 틀린 문제가 없어요! 퀴즈를 풀다 틀리면 여기에 모여요 📝"); return; }
+  const used=new Set(); while(qs.length<CONFIG.QUESTIONS_PER_GAME) qs.push(pickQuestion(1, used, catFor()));
+  logEvent("solo_start"); game={mode:"solo", review:true, qs, idx:0, score:0}; soloQuestion();
+}
+$("btn-daily").onclick=startDaily;
+$("btn-wrong").onclick=startWrong;
+refreshDailyBtn(); refreshWrongBtn(); checkAttend();
 
 /* ============ 홈 화면에 추가 (바로가기 아이콘) ============ */
 let installEvt = null;
