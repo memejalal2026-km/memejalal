@@ -1546,7 +1546,7 @@ window.PLANT2={growth:(k,s,px,potc)=>svg(growth(k,s,potc),px),result:(k,px)=>svg
 function plantSVG(seed, step, px){
   const k=(seed||SEEDS[0]).k, pc=POTS[stageOf(step)], w=px||128;
   if(step<=0) return PLANT2.growth(k,-1,w,pc);                       // 빈 화분
-  if(step>=100) return PLANT2.result(k,Math.round(w*1.08));          // 5단계: 화분 없이 결과물 (처음 시안의 70% 크기)
+  if(step>=100) return PLANT2.result(k,Math.round(w*0.86));          // 5단계: 화분 없이 결과물 (처음 시안의 70% 크기)
   const s = step<=10?0 : step<=25?1 : step<=50?2 : step<=75?3 : 4;   // 0=씨앗 1=새싹 2=자라는 중 3=꽃·열매 맺힘 4=완성
   return PLANT2.growth(k,s,w,pc);
 }
