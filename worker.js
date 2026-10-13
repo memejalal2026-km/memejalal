@@ -12,7 +12,9 @@ const SEEDS = {
   clover: "네잎클로버", apple: "사과나무", grape: "포도나무", cherry: "앵두나무",
   persim: "감나무", pear: "배나무", avocado: "아보카도", blueberry: "블루베리", strawberry: "스트로베리",
   tulip: "튤립", cosmos: "코스모스", mugung: "무궁화", lavender: "라벤더",
-  sakura: "벚나무", peach: "복숭아나무", tangerine: "귤나무", lemon: "레몬나무"
+  sakura: "벚나무", peach: "복숭아나무", tangerine: "귤나무", lemon: "레몬나무",
+  forsythia: "개나리", azalea: "진달래", lily: "백합", carnation: "카네이션",
+  chestnut: "밤나무", pomegranate: "석류나무", banana: "바나나나무", cactus: "선인장"
 };
 
 export const stateOf = s => (s <= 10 ? 0 : s <= 25 ? 1 : s <= 50 ? 2 : s <= 75 ? 3 : s <= 99 ? 4 : 5);
