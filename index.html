@@ -436,7 +436,7 @@
     <h2 style="font-size:20px;margin-bottom:10px">📸 내 화분 자랑하기</h2>
     <div id="ps-wait" class="wait">이미지 만드는 중… 🌱</div>
     <img id="ps-img" class="hidden" alt="내 화분 공유 이미지">
-    <p class="modehint" style="margin:4px 0 2px">이미지를 길게 누르면 사진에 저장할 수 있어요.</p>
+    <p class="modehint" style="margin:4px 0 2px">이미지를 길게 누르면 사진에 저장할 수 있어요.<br>🎁 친구가 이 링크로 가입하면 둘 다 물 2방울!</p>
     <button class="btn" id="ps-native">📤 이미지로 공유하기</button>
     <button class="btn ghost" id="ps-save">💾 이미지 저장</button>
     <div class="share-row">
@@ -465,6 +465,8 @@ const CONFIG = {
   WATER_ATTEND: 1,           // 출석 보상 (하루 첫 접속, 회원)
   WATER_DAILY: 1,            // 오늘의 문제 보너스 (하루 한 번)
   WATER_COMBO: 1,            // 연속 만점 보너스
+  WATER_INVITE: 2,           // 친구 초대 보상 (초대한 사람·가입한 사람 각각)
+  INVITE_MAX: 20,            // 초대 보상을 받을 수 있는 최대 인원
   COMBO_MIN: 3,              // 몇 연속 만점부터 보너스를 줄지
   TIME_LIMIT_SOLO: 5,        // 혼자 하기: 문제당 제한 시간(초)
   TIME_LIMIT_PARTY: 5,       // 친구 대결: 문제당 제한 시간(초)
@@ -3127,7 +3129,7 @@ function syncMe(){
       const c=sbc(); const m=me(); if(!c||!m) return;
       const r=await c.auth.getSession(); const ses=r&&r.data&&r.data.session; if(!ses) return;
       const d=m.data;
-      await c.from("profiles").update({plants:(d.coll||[]).length, pot_step:d.pot?(d.pot.step||0):0, data:{coll:d.coll||[], pot:d.pot||null, att:d.att||""}, last_seen:new Date().toISOString()}).eq("id",ses.user.id);
+      await c.from("profiles").update({plants:(d.coll||[]).length, pot_step:d.pot?(d.pot.step||0):0, data:{coll:d.coll||[], pot:d.pot||null, att:d.att||"", inv:d.inv||"", invClaimed:d.invClaimed||0, bonus:d.bonus||0}, last_seen:new Date().toISOString()}).eq("id",ses.user.id);
     }catch(e){}
   },1500);
 }
@@ -3137,6 +3139,9 @@ function mergeRemote(local, remote){
   const a=local.pot, b=remote&&remote.pot;
   local.coll=coll; local.pot=(a&&b)?((b.step||0)>(a.step||0)?b:a):(a||b||null);
   if(remote && remote.att && String(remote.att)>String(local.att||"")) local.att=remote.att;
+  if(remote && remote.inv && !local.inv) local.inv=remote.inv;
+  if(remote && (remote.invClaimed||0)>(local.invClaimed||0)) local.invClaimed=remote.invClaimed;
+  if(remote && (remote.bonus||0)>(local.bonus||0)) local.bonus=remote.bonus;
 }
 
 /* --- 회원가입 / 로그인 --- */
@@ -3178,8 +3183,10 @@ async function doAuth(signup){
   if(signup){
     if(!online&&u[nick]){ toast("이미 있는 닉네임이에요"); return; }
     if(!u[nick]) u[nick]={h, pot:null, coll:[]}; else u[nick].h=h;
+    const inviter=inviterFor(nick);
+    if(inviter && !u[nick].inv){ u[nick].inv=inviter; u[nick].bonus=(u[nick].bonus||0)+CONFIG.WATER_INVITE; try{ localStorage.removeItem("meme_inviter"); }catch(e){} }
     if(!saveUsers(u)) return;
-    setMe(nick); toast("가입 완료! 씨앗을 골라 보세요 🌱");
+    setMe(nick); toast(inviter ? `🎁 ${inviter}님의 초대로 가입! 씨앗을 심으면 물 ${CONFIG.WATER_INVITE}방울을 받아요` : "가입 완료! 씨앗을 골라 보세요 🌱");
   }else{
     if(!online){
       if(!u[nick]||u[nick].h!==h){ toast("닉네임이나 비밀번호가 달라요"); return; }
@@ -3190,7 +3197,7 @@ async function doAuth(signup){
     }
     setMe(nick); toast(nick+"님 어서 와요!");
   }
-  $("m-pw").value=""; logMember(); syncMe(); checkAttend(); openGarden();
+  $("m-pw").value=""; logMember(); syncMe(); checkAttend(); setTimeout(checkInvites,2000); openGarden();
 }
 $("m-login").onclick=()=>doAuth(false);
 $("m-signup").onclick=()=>doAuth(true);
@@ -3243,9 +3250,10 @@ function renderColl(d){
 }
 function plant(k){
   const key=k==="rand"?rand(SEEDS).k:k;
-  updateMe(d=>{ d.pot={seed:key,step:1}; });
+  let bonus=0;
+  updateMe(d=>{ bonus=d.bonus||0; d.pot={seed:key,step:Math.min(100,1+bonus)}; d.bonus=0; });
   const sd=SEEDS.find(s=>s.k===key);
-  toast(sd.n+" 씨앗을 심었어요! 🌱"); renderGarden();
+  toast(sd.n+" 씨앗을 심었어요! 🌱"+(bonus?` 보너스 물 ${bonus}방울 💧`:"")); renderGarden();
 }
 $("tab-pot").onclick=()=>{ gTab="pot"; renderGarden(); };
 $("tab-coll").onclick=()=>{ gTab="coll"; renderGarden(); };
@@ -3331,8 +3339,8 @@ function potInviteUrl(nick, pot){
 }
 function potShareMsg(sd, step){
   return step>=100
-    ? `🎉 [화분 키우기] 내 ${sd.n} 화분을 다 키웠어요! (100/100)\n퀴즈 풀고 물 주기 💧 너도 키워볼래?`
-    : `🌱 [화분 키우기] ${sd.n} 키우는 중! ${step}/100 단계\n퀴즈 풀고 물 주기 💧 너도 키워볼래?`;
+    ? `🎉 [화분 키우기] 내 ${sd.n} 화분을 다 키웠어요! (100/100)\n퀴즈 풀고 물 주기 💧 이 링크로 가입하면 너도 나도 물 2방울 🎁`
+    : `🌱 [화분 키우기] ${sd.n} 키우는 중! ${step}/100 단계\n퀴즈 풀고 물 주기 💧 이 링크로 가입하면 너도 나도 물 2방울 🎁`;
 }
 /* 줄바꿈해서 가운데 정렬로 글자 쓰기 */
 function drawWrapped(ctx, text, cx, y, maxW, lh, maxLines){
@@ -3438,10 +3446,11 @@ $("pshare").onclick=e=>{ if(e.target.id==="pshare") closePotShare(); };
 (function showInvite(){
   let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; }
   const from=(q.get("from")||"").trim().slice(0,10), sd=SEEDS.find(s=>s.k===q.get("p")), st=parseInt(q.get("s"),10);
+  if(from){ try{ localStorage.setItem("meme_inviter", from); }catch(e){} }   // 친구 초대 보상용
   if(!from || !sd || !(st>=1&&st<=100)) return;
   const box=$("start-invite");
   const what = st>=100 ? `${escHtml(sd.n)}${josaIGA(sd.n)} 다 자랐어요! 🎉` : `${escHtml(sd.n)}${josaIGA(sd.n)} <b>${st}단계</b>까지 자랐어요!`;
-  box.innerHTML=`<div class="sprite">${plantSVG(sd,st,64)}</div><b>${escHtml(from)}</b>님의 ${what}<br>퀴즈 풀고 물 주기 💧 너도 키워볼래?<button class="btn" id="inv-go">🌱 나도 화분 키우기</button>`;
+  box.innerHTML=`<div class="sprite">${plantSVG(sd,st,64)}</div><b>${escHtml(from)}</b>님의 ${what}<br>퀴즈 풀고 물 주기 💧 너도 키워볼래?<br><b>🎁 지금 가입하면 물 2방울 보너스!</b><button class="btn" id="inv-go">🌱 나도 화분 키우기</button>`;
   box.classList.remove("hidden");
   $("inv-go").onclick=openGarden;
   try{ history.replaceState(null,"",location.pathname); }catch(e){}
@@ -3492,6 +3501,31 @@ function startWrong(){
 $("btn-daily").onclick=startDaily;
 $("btn-wrong").onclick=startWrong;
 refreshDailyBtn(); refreshWrongBtn(); checkAttend();
+
+/* ============ 친구 초대 보상 ============
+   - 친구의 공유 링크(?from=닉네임)로 들어와서 '회원가입'하면: 나에게 물 2방울 (씨앗을 심으면 들어가요)
+   - 초대한 친구는 다음 접속 때 서버에서 '내 링크로 가입한 사람 수'를 확인해 1명당 물 2방울
+   - 가입한 사람의 회원 정보(data.inv)에 초대한 사람 닉네임을 남겨서 셉니다. 1명이 받을 수 있는 초대 보상은 최대 CONFIG.INVITE_MAX명까지 */
+(function rememberInviter(){
+  try{ const f=(new URLSearchParams(location.search).get("from")||"").trim().slice(0,10); if(f) localStorage.setItem("meme_inviter", f); }catch(e){}
+})();
+function inviterFor(nick){ try{ const f=localStorage.getItem("meme_inviter")||""; return (f && f!==nick) ? f : ""; }catch(e){ return ""; } }
+function giveDrops(n, why){
+  const m=me(); if(!m || n<=0) return;
+  updateMe(d=>{ if(d.pot && d.pot.step<100) d.pot.step=Math.min(100,d.pot.step+n); else d.bonus=(d.bonus||0)+n; });
+  setTimeout(()=>toast(why),600);
+}
+async function checkInvites(){
+  const m=me(), c=sbc(); if(!m || !c) return;
+  try{
+    const r=await c.from("profiles").select("nickname").eq("data->>inv", m.nick).limit(CONFIG.INVITE_MAX);
+    if(r.error || !r.data) return;
+    const n=Math.min(r.data.length, CONFIG.INVITE_MAX), got=m.data.invClaimed||0;
+    if(n>got){ updateMe(d=>{ d.invClaimed=n; }); giveDrops((n-got)*CONFIG.WATER_INVITE, `🎉 친구 ${n-got}명이 내 링크로 가입했어요! 물 ${(n-got)*CONFIG.WATER_INVITE}방울 💧`); }
+  }catch(e){}
+}
+setTimeout(checkInvites, 2500);
+
 
 /* ============ 홈 화면에 추가 (바로가기 아이콘) ============ */
 let installEvt = null;
