@@ -141,6 +141,7 @@ input,textarea{font:inherit;color:inherit}
 .rk.me{background:var(--gold-soft);border-radius:12px}
 /* badges */
 .bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bgh{font-size:16px;margin:18px 2px 8px}.bgh small{color:var(--sub);font-weight:500}
 .bdg{background:var(--card);border-radius:16px;box-shadow:var(--sh);padding:12px 6px;text-align:center}
 .bdg .e{font-size:34px;display:block}
 .bdg b{display:block;font-size:13px;margin-top:2px}
@@ -214,7 +215,7 @@ input,textarea{font:inherit;color:inherit}
     <button class="tile" id="h-review"><span class="ic">🔁</span>복습하기<span class="dot hidden" id="h-revn"></span></button>
     <button class="tile" id="h-stagebtn"><span class="ic">🎚️</span>단계 바꾸기</button>
     <button class="tile" id="h-sets"><span class="ic">📸</span>나만의 문제집</button>
-    <button class="tile" id="h-book"><span class="ic">📒</span>내 단어장</button>
+    <button class="tile" id="h-book"><span class="ic">📝</span>오답 노트<span class="dot hidden" id="h-bookn"></span></button>
     <button class="tile" id="h-rankbtn"><span class="ic">🏆</span>랭킹</button>
     <button class="tile" id="h-badges"><span class="ic">🏅</span>배지함</button>
   </div>
@@ -251,6 +252,7 @@ input,textarea{font:inherit;color:inherit}
     <div class="push" id="r-push"></div>
   </div>
   <div class="card"><b>이번 판 단어</b><ul class="wl" id="r-list"></ul></div>
+  <button class="btn gold hidden" id="r-wrong">📝 틀린 단어만 다시 풀기</button>
   <button class="btn" id="r-again">한 판 더! ▶</button>
   <div class="grid2">
     <button class="tile" id="r-share"><span class="ic">📤</span>자랑하기</button>
@@ -271,13 +273,14 @@ input,textarea{font:inherit;color:inherit}
 <section class="screen" id="s-badges">
   <div class="top"><button class="back" data-go="home">‹</button><h2>🏅 배지함</h2></div>
   <p class="note" id="bd-sum"></p>
-  <div class="bgrid" id="bd-grid"></div>
+  <div id="bd-grid"></div>
 </section>
 
 <!-- 단어장 -->
 <section class="screen" id="s-book">
-  <div class="top"><button class="back" data-go="home">‹</button><h2>📒 내 단어장</h2></div>
-  <div class="tabs"><button class="on" data-bt="wrong">헷갈리는</button><button data-bt="star">별표</button><button data-bt="done">외운 단어</button></div>
+  <div class="top"><button class="back" data-go="home">‹</button><h2>📝 오답 노트</h2></div>
+  <div class="push" id="bk-push" style="margin-bottom:10px"></div>
+  <div class="tabs"><button class="on" data-bt="wrong">틀린 단어</button><button data-bt="star">별표</button><button data-bt="done">외운 단어</button></div>
   <div class="card"><ul class="wl" id="bk-list"></ul></div>
   <button class="btn" id="bk-play">이 단어들로 풀기 ▶</button>
 </section>
@@ -393,7 +396,7 @@ const mainMean = m => String(m).split(/[,/]/)[0].replace(/\(.*?\)/g,"").replace(
 
 /* ===================== 저장 (이 기기 + 서버) ===================== */
 const LS_USERS="wk_users", LS_ME="wk_me";
-function freshData(){ return {stage:"e1", total:0, week:0, wk:weekKey(), w:{}, att:{last:"",streak:0,best:0}, day:{d:today(),n:0}, goal:10, bd:{}, perfect:0, revDone:0, conq:{}, made:0, below:[], lastRank:0, rkStage:{}}; }
+function freshData(){ return {stage:"e1", total:0, week:0, wk:weekKey(), w:{}, att:{last:"",streak:0,best:0}, day:{d:today(),n:0}, goal:10, bd:{}, perfect:0, revDone:0, conq:{}, made:0, below:[], lastRank:0, rkStage:{}, ov:0, ovMax:0, revenge:0, passedBy:[], combo:0, bestCombo:0, goalDays:0, dayBest:0, early:0, night:0, wkend:{k:"",m:0}, weekend:0, lis:0, spl:0, shares:0, noteMax:0, noteClear:0, wkRank:{wk:"",r:0}, t10:0, top3:0, first:0, keep1:0}; }
 function loadUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS)||"{}"); }catch(e){ return {}; } }
 function saveUsers(u){ try{ localStorage.setItem(LS_USERS, JSON.stringify(u)); return true; }catch(e){ toast("저장 공간이 부족해요"); return false; } }
 function myNick(){ try{ return localStorage.getItem(LS_ME)||""; }catch(e){ return ""; } }
@@ -403,6 +406,7 @@ function loadState(){
   const u=loadUsers(), n=myNick()||"__guest";
   if(!u[n]) u[n]={d:freshData()};
   STATE=Object.assign(freshData(), u[n].d||{});
+  if(STATE.wkRank && STATE.wkRank.wk && STATE.wkRank.wk!==weekKey() && STATE.wkRank.r===1) STATE.keep1=1;
   if(STATE.wk!==weekKey()){ STATE.wk=weekKey(); STATE.week=0; }
   if(STATE.day.d!==today()) STATE.day={d:today(),n:0};
   saveUsers(u);
@@ -475,31 +479,56 @@ async function logout(){ try{ const c=sbc(); if(c) await c.auth.signOut(); }catc
 
 /* ===================== 레벨·배지 ===================== */
 function levelOf(t){ let i=0; LEVELS.forEach((l,j)=>{ if(t>=l[0]) i=j; }); return i; }
+const BADGE_GROUPS = [["word","📈 맞힌 단어"],["pass","🏎️ 추월"],["rank","🥇 순위"],["combo","🔥 연속 정답"],["note","📝 오답 노트"],["habit","⏰ 공부 습관"],["streak","📅 연속 출석"],["skill","🎯 만점"],["type","🎧 문제 형식"],["stage","🏁 단계 정복"],["set","📸 나만의 문제집"]];
 const BADGES = [
-  {id:"c10",u:"개만 더 맞히면",e:"🌱",n:"첫걸음",d:"단어 10개 맞히기",cnt:s=>s.total,need:10},
-  {id:"c50",u:"개만 더 맞히면",e:"🍀",n:"50단어",d:"단어 50개 맞히기",cnt:s=>s.total,need:50},
-  {id:"c100",u:"개만 더 맞히면",e:"💯",n:"100단어 돌파",d:"단어 100개 맞히기",cnt:s=>s.total,need:100},
-  {id:"c300",u:"개만 더 맞히면",e:"🚀",n:"300단어",d:"단어 300개 맞히기",cnt:s=>s.total,need:300},
-  {id:"c500",u:"개만 더 맞히면",e:"🔥",n:"500단어",d:"단어 500개 맞히기",cnt:s=>s.total,need:500},
-  {id:"c1000",u:"개만 더 맞히면",e:"💎",n:"1000단어",d:"단어 1,000개 맞히기",cnt:s=>s.total,need:1000},
-  {id:"c3000",u:"개만 더 맞히면",e:"👑",n:"3000단어",d:"단어 3,000개 맞히기",cnt:s=>s.total,need:3000},
-  {id:"s3",u:"일만 더 연속 출석하면",e:"📅",n:"3일 연속",d:"3일 연속 출석",cnt:s=>s.att.best,need:3},
-  {id:"s7",u:"일만 더 연속 출석하면",e:"🗓️",n:"7일 연속",d:"7일 연속 출석",cnt:s=>s.att.best,need:7},
-  {id:"s30",u:"일만 더 연속 출석하면",e:"🏃",n:"한 달 개근",d:"30일 연속 출석",cnt:s=>s.att.best,need:30},
-  {id:"s100",u:"일만 더 연속 출석하면",e:"🦸",n:"100일 개근",d:"100일 연속 출석",cnt:s=>s.att.best,need:100},
-  {id:"perfect",u:"번 더 만점을 받으면",e:"🎯",n:"만점",d:"한 판 만점 받기",cnt:s=>s.perfect,need:1},
-  {id:"perfect10",u:"번 더 만점을 받으면",e:"🏹",n:"만점 10번",d:"만점 10번 받기",cnt:s=>s.perfect,need:10},
-  {id:"rev50",u:"개만 더 다시 맞히면",e:"🧠",n:"복습왕",d:"틀렸던 단어 50개 다시 맞히기",cnt:s=>s.revDone,need:50},
-  {id:"st_e1",u:"개만 더 맞히면",e:"🐣",n:"초등 기초 정복",d:"초등 기초 단어 전부 맞히기",cnt:s=>stageDone(s,"e1"),need:()=>stageOf("e1").words.length},
-  {id:"st_e2",u:"개만 더 맞히면",e:"🐥",n:"초등 심화 정복",d:"초등 심화 단어 전부 맞히기",cnt:s=>stageDone(s,"e2"),need:()=>stageOf("e2").words.length},
-  {id:"st_m",u:"개만 더 맞히면",e:"🦅",n:"중학 정복",d:"중학 단어 전부 맞히기",cnt:s=>stageDone(s,"m"),need:()=>stageOf("m").words.length},
-  {id:"st_h",u:"개만 더 맞히면",e:"🎓",n:"고등·수능 정복",d:"고등·수능 단어 전부 맞히기",cnt:s=>stageDone(s,"h"),need:()=>stageOf("h").words.length},
-  {id:"st_talk",u:"개만 더 맞히면",e:"💬",n:"회화 정복",d:"생활 영어 표현 전부 맞히기",cnt:s=>stageDone(s,"talk"),need:()=>stageOf("talk").words.length},
-  {id:"top10",e:"🏆",n:"이번 주 TOP 10",d:"이번 주 랭킹 10등 안에 들기",cnt:s=>s.bd.top10?1:0,need:1,manual:true},
-  {id:"make1",u:"개만 만들면(나만의 문제집)",e:"✏️",n:"문제집 작가",d:"나만의 문제집 만들기",cnt:s=>s.made,need:1},
-  {id:"conq1",u:"개만 더 정복하면",e:"🚩",n:"첫 정복",d:"문제집 1개 정복하기",cnt:s=>Object.keys(s.conq).length,need:1},
-  {id:"conq5",u:"개만 더 정복하면",e:"🗺️",n:"정복자",d:"문제집 5개 정복하기",cnt:s=>Object.keys(s.conq).length,need:5},
-  {id:"fans10",e:"🌟",n:"인기 출제자",d:"내 문제집을 10명이 정복",cnt:s=>s.fans||0,need:10,manual:true}
+  {g:"word",id:"c10",u:"개만 더 맞히면",e:"🌱",n:"첫걸음",d:"단어 10개 맞히기",cnt:s=>s.total,need:10},
+  {g:"word",id:"c50",u:"개만 더 맞히면",e:"🍀",n:"50단어",d:"단어 50개 맞히기",cnt:s=>s.total,need:50},
+  {g:"word",id:"c100",u:"개만 더 맞히면",e:"💯",n:"100단어 돌파",d:"단어 100개 맞히기",cnt:s=>s.total,need:100},
+  {g:"word",id:"c300",u:"개만 더 맞히면",e:"🚀",n:"300단어",d:"단어 300개 맞히기",cnt:s=>s.total,need:300},
+  {g:"word",id:"c500",u:"개만 더 맞히면",e:"🔥",n:"500단어",d:"단어 500개 맞히기",cnt:s=>s.total,need:500},
+  {g:"word",id:"c1000",u:"개만 더 맞히면",e:"💎",n:"1000단어",d:"단어 1,000개 맞히기",cnt:s=>s.total,need:1000},
+  {g:"word",id:"c3000",u:"개만 더 맞히면",e:"👑",n:"3000단어",d:"단어 3,000개 맞히기",cnt:s=>s.total,need:3000},
+  {g:"pass",id:"pass1",u:"명만 더 추월하면",e:"🏎️",n:"첫 추월",d:"이번 주 랭킹에서 처음으로 누군가 앞지르기",cnt:s=>s.ov||0,need:1},
+  {g:"pass",id:"pass10",u:"명만 더 추월하면",e:"💨",n:"추월 10명",d:"누적 10명 앞지르기",cnt:s=>s.ov||0,need:10},
+  {g:"pass",id:"pass50",u:"명만 더 추월하면",e:"🛸",n:"추월 50명",d:"누적 50명 앞지르기",cnt:s=>s.ov||0,need:50},
+  {g:"pass",id:"pass5in1",e:"⚡",n:"한 판 역전",d:"한 판에 5명 이상 한꺼번에 앞지르기",cnt:s=>s.ovMax||0,need:5,manual:true},
+  {g:"pass",id:"revenge",e:"😤",n:"리벤지",d:"나를 앞질렀던 사람을 다시 따라잡기",cnt:s=>s.revenge||0,need:1,manual:true},
+  {g:"rank",id:"top10",e:"🏆",n:"이번 주 TOP 10",d:"이번 주 랭킹 10등 안에 들기",cnt:s=>(s.t10||(s.bd&&s.bd.top10))?1:0,need:1,manual:true},
+  {g:"rank",id:"top3",e:"🥉",n:"이번 주 TOP 3",d:"이번 주 랭킹 3등 안에 들기",cnt:s=>s.top3||0,need:1,manual:true},
+  {g:"rank",id:"first",e:"🥇",n:"이번 주 1등",d:"이번 주 랭킹 1등 하기",cnt:s=>s.first||0,need:1,manual:true},
+  {g:"rank",id:"keep1",e:"🛡️",n:"1등 지키기",d:"1등으로 한 주 마감하기",cnt:s=>s.keep1||0,need:1,manual:true},
+  {g:"combo",id:"combo10",e:"✨",n:"10연속 정답",d:"쉬지 않고 10번 연속 맞히기",cnt:s=>s.bestCombo||0,need:10},
+  {g:"combo",id:"combo30",e:"💥",n:"30연속 정답",d:"쉬지 않고 30번 연속 맞히기",cnt:s=>s.bestCombo||0,need:30},
+  {g:"combo",id:"combo100",e:"🌟",n:"100연속 정답",d:"쉬지 않고 100번 연속 맞히기",cnt:s=>s.bestCombo||0,need:100},
+  {g:"note",id:"note1",u:"개만 더 해결하면",e:"🩹",n:"첫 해결",d:"오답 노트 단어 1개 해결",cnt:s=>s.revDone||0,need:1},
+  {g:"note",id:"note20",u:"개만 더 해결하면",e:"🧹",n:"오답 청소부",d:"오답 노트 단어 20개 해결",cnt:s=>s.revDone||0,need:20},
+  {g:"note",id:"rev50",u:"개만 더 해결하면",e:"🧠",n:"복습왕",d:"오답 노트 단어 50개 해결",cnt:s=>s.revDone||0,need:50},
+  {g:"note",id:"note200",u:"개만 더 해결하면",e:"🏅",n:"오답 정복자",d:"오답 노트 단어 200개 해결",cnt:s=>s.revDone||0,need:200},
+  {g:"note",id:"noteClear",e:"✅",n:"오답 노트 비우기",d:"10개 넘게 쌓인 오답 노트를 0개로 만들기",cnt:s=>s.noteClear||0,need:1,manual:true},
+  {g:"habit",id:"goal7",u:"번 더 오늘의 목표를 채우면",e:"⭐",n:"목표 달성 7번",d:"오늘의 목표 7번 채우기",cnt:s=>s.goalDays||0,need:7},
+  {g:"habit",id:"day100",e:"🏋️",n:"하루 100단어",d:"하루에 100개 맞히기",cnt:s=>s.dayBest||0,need:100,manual:true},
+  {g:"habit",id:"early",e:"🌅",n:"아침형",d:"아침 7시 전에 공부하기",cnt:s=>s.early||0,need:1,manual:true},
+  {g:"habit",id:"night",e:"🦉",n:"올빼미",d:"밤 11시 이후 공부하기",cnt:s=>s.night||0,need:1,manual:true},
+  {g:"habit",id:"weekend",e:"🏖️",n:"주말 공부",d:"토요일·일요일 둘 다 공부하기",cnt:s=>s.weekend||0,need:1,manual:true},
+  {g:"streak",id:"s3",u:"일만 더 연속 출석하면",e:"📅",n:"3일 연속",d:"3일 연속 출석",cnt:s=>s.att.best,need:3},
+  {g:"streak",id:"s7",u:"일만 더 연속 출석하면",e:"🗓️",n:"7일 연속",d:"7일 연속 출석",cnt:s=>s.att.best,need:7},
+  {g:"streak",id:"s30",u:"일만 더 연속 출석하면",e:"🏃",n:"한 달 개근",d:"30일 연속 출석",cnt:s=>s.att.best,need:30},
+  {g:"streak",id:"s100",u:"일만 더 연속 출석하면",e:"🦸",n:"100일 개근",d:"100일 연속 출석",cnt:s=>s.att.best,need:100},
+  {g:"skill",id:"perfect",u:"번 더 만점을 받으면",e:"🎯",n:"만점",d:"한 판 만점 받기",cnt:s=>s.perfect,need:1},
+  {g:"skill",id:"perfect10",u:"번 더 만점을 받으면",e:"🏹",n:"만점 10번",d:"만점 10번 받기",cnt:s=>s.perfect,need:10},
+  {g:"type",id:"listen50",u:"개만 더 맞히면(듣기)",e:"🎧",n:"귀가 트였다",d:"듣기 문제 50개 맞히기",cnt:s=>s.lis||0,need:50},
+  {g:"type",id:"spell50",u:"개만 더 맞히면(철자)",e:"✍️",n:"철자 달인",d:"철자 채우기 50개 맞히기",cnt:s=>s.spl||0,need:50},
+  {g:"stage",id:"st_e1",u:"개만 더 맞히면",e:"🐣",n:"초등 기초 정복",d:"초등 기초 단어 전부 맞히기",cnt:s=>stageDone(s,"e1"),need:()=>stageOf("e1").words.length},
+  {g:"stage",id:"st_e2",u:"개만 더 맞히면",e:"🐥",n:"초등 심화 정복",d:"초등 심화 단어 전부 맞히기",cnt:s=>stageDone(s,"e2"),need:()=>stageOf("e2").words.length},
+  {g:"stage",id:"st_m",u:"개만 더 맞히면",e:"🦅",n:"중학 정복",d:"중학 단어 전부 맞히기",cnt:s=>stageDone(s,"m"),need:()=>stageOf("m").words.length},
+  {g:"stage",id:"st_h",u:"개만 더 맞히면",e:"🎓",n:"고등·수능 정복",d:"고등·수능 단어 전부 맞히기",cnt:s=>stageDone(s,"h"),need:()=>stageOf("h").words.length},
+  {g:"stage",id:"st_talk",u:"개만 더 맞히면",e:"💬",n:"회화 정복",d:"생활 영어 표현 전부 맞히기",cnt:s=>stageDone(s,"talk"),need:()=>stageOf("talk").words.length},
+  {g:"set",id:"make1",u:"개만 만들면(나만의 문제집)",e:"✏️",n:"문제집 작가",d:"나만의 문제집 만들기",cnt:s=>s.made,need:1},
+  {g:"set",id:"make5",u:"개만 더 만들면(나만의 문제집)",e:"📚",n:"다작 작가",d:"나만의 문제집 5개 만들기",cnt:s=>s.made,need:5},
+  {g:"set",id:"share3",e:"📤",n:"소문내기",d:"내 문제집 3번 공유하기",cnt:s=>s.shares||0,need:3,manual:true},
+  {g:"set",id:"conq1",u:"개만 더 정복하면",e:"🚩",n:"첫 정복",d:"문제집 1개 정복하기",cnt:s=>Object.keys(s.conq).length,need:1},
+  {g:"set",id:"conq5",u:"개만 더 정복하면",e:"🗺️",n:"정복자",d:"문제집 5개 정복하기",cnt:s=>Object.keys(s.conq).length,need:5},
+  {g:"set",id:"fans10",e:"🌟",n:"인기 출제자",d:"내 문제집을 10명이 정복",cnt:s=>s.fans||0,need:10,manual:true}
 ];
 const needOf = b => typeof b.need==="function"?b.need():b.need;
 function stageDone(s,k){ const st=stageOf(k); let n=0; st.words.forEach(([w])=>{ const r=s.w[keyOf(w)]; if(r&&r.c>0) n++; }); return n; }
@@ -541,7 +570,11 @@ async function fetchMyRank(){
     if(w.error||a.error) return null;
     RK.week=(w.count||0)+1; RK.all=(a.count||0)+1;
     RK.aboveW=(aw.data&&aw.data[0])||null; RK.aboveA=(aa.data&&aa.data[0])||null;
-    if(RK.week<=10 && STATE.week>0 && !STATE.bd.top10){ STATE.bd.top10=today(); popBadges([BADGES.find(b=>b.id==="top10")]); }
+    if(STATE.week>0){
+      if(RK.week<=10) STATE.t10=1; if(RK.week<=3) STATE.top3=1; if(RK.week===1) STATE.first=1;
+      STATE.wkRank={wk:weekKey(), r:RK.week};
+      const got=checkBadges(); save(); if(got.length) popBadges(got);
+    }
     return RK;
   }catch(e){ return null; }
 }
@@ -573,6 +606,7 @@ RENDER.home = async function(){
   $("h-goaltxt").textContent = n>=g ? `🎉 오늘 목표 달성! (${n}/${g}) 더 하면 등수가 더 올라가요` : `오늘 ${n}/${g}개 · 목표까지 ${g-n}개 남았어요`;
   const st=stageOf(STATE.stage); $("h-stage").textContent=`${st.name} (${st.sub}) · ${CONFIG.PER_GAME}문제`;
   const due=dueWords().length; $("h-revn").textContent=due; $("h-revn").classList.toggle("hidden",!due);
+  const nwr=bookWords("wrong").length; $("h-bookn").textContent=nwr; $("h-bookn").classList.toggle("hidden",!nwr);
   $("h-auth").innerHTML = isMember()
     ? `<span class="who">👤 <b>${esc(myNick())}</b>님</span><button class="abtn ghost" id="h-logout">로그아웃</button>`
     : `<span class="who">🙋 가입하면<br>등수에 이름이 올라가요</span><button class="abtn ghost" id="h-login">로그인</button><button class="abtn" id="h-signup">회원가입</button>`;
@@ -590,6 +624,7 @@ RENDER.home = async function(){
     if(r){
       $("h-rank").textContent = STATE.week>0 ? r.week+"등" : "-";
       const p2=[];
+      if(ov){ const pb=new Set(STATE.passedBy||[]); ov.forEach(x=>pb.add(x.nickname)); STATE.passedBy=[...pb].slice(-20); save(); }
       if(ov) p2.push(`<div class="red">😮 <b>${esc(ov.map(x=>x.nickname).join(", "))}</b>님이 나를 앞질렀어요! 다시 따라잡아 볼까요?</div>`);
       if(STATE.week===0) p2.push(`<div class="blue">🏁 이번 주 랭킹이 새로 시작됐어요. 한 판만 풀어도 등수에 올라가요!</div>`);
       else if(r.aboveW) p2.push(`<div class="blue">🔥 지금 이번 주 <b>${r.week}등</b>! <b>${r.aboveW.week-STATE.week+1}개</b>만 더 맞히면 ${r.week-1}등 <b>${esc(r.aboveW.nickname)}</b>님을 따라잡아요!</div>`);
@@ -695,12 +730,20 @@ function answer(ok, typed, btn){
     r.c++; r.b=Math.min(5,r.b+1); r.d=addDays(t,GAP[r.b]); GAME.right++;
     STATE.total++; STATE.week++; STATE.day.n++;
     if(wasWrong && r.b>=3) STATE.revDone++;
-  }else{ r.x++; r.b=0; r.d=addDays(t,1); }
+    STATE.combo=(STATE.combo||0)+1; STATE.bestCombo=Math.max(STATE.bestCombo||0,STATE.combo);
+    if(STATE.day.n===STATE.goal) STATE.goalDays=(STATE.goalDays||0)+1;
+    STATE.dayBest=Math.max(STATE.dayBest||0,STATE.day.n);
+    const now=new Date(), hr=now.getHours(), dw=now.getDay();
+    if(hr<7) STATE.early=1; if(hr>=23) STATE.night=1;
+    if(dw===0||dw===6){ const wk=weekKey(); if(!STATE.wkend||STATE.wkend.k!==wk) STATE.wkend={k:wk,m:0}; STATE.wkend.m|=(dw===6?1:2); if(STATE.wkend.m===3) STATE.weekend=1; }
+    if(q.t==="listen") STATE.lis=(STATE.lis||0)+1; if(q.t==="spell") STATE.spl=(STATE.spl||0)+1;
+  }else{ r.x++; r.b=0; r.d=addDays(t,1); STATE.combo=0; }
+  { const wc=bookWords("wrong").length; STATE.noteMax=Math.max(STATE.noteMax||0,wc); if(wc===0 && STATE.noteMax>=10){ STATE.noteClear=1; STATE.noteMax=0; } }
   GAME.log.push({w:q.w, ok});
   // 표시
   document.querySelectorAll("#q-ans .opt").forEach(b=>{ const o=q.opts[+b.dataset.i]; if(o===q.w) b.classList.add("ok"); else if(b===btn) b.classList.add("no"); });
   const fb=$("q-fb");
-  if(ok){ fb.className="fb ok"; fb.innerHTML=`⭕ 정답! <small>${esc(q.w[0])} = ${esc(q.w[1])}</small>`; }
+  if(ok){ fb.className="fb ok"; fb.innerHTML=`⭕ 정답!${STATE.combo>=3?` 🔥 ${STATE.combo}연속!`:""} <small>${esc(q.w[0])} = ${esc(q.w[1])}</small>`; }
   else { fb.className="fb no"; fb.innerHTML=`❌ 아쉬워요${typed?` (적은 답: ${esc(typed)})`:""} <small>정답: <b>${esc(q.w[0])}</b> = ${esc(q.w[1])} · 내일 복습에 나와요</small>`; }
   if(q.t!=="e2k"||!ok) speak(q.w[0]);
   if(q.t==="spell"){ const i=$("q-in"); if(i) i.disabled=true; }
@@ -710,7 +753,7 @@ function answer(ok, typed, btn){
 }
 function nextQ(){ GAME.i++; if(GAME.i<GAME.qs.length) showQ(); else finish(); }
 $("q-next").onclick=nextQ;
-$("q-star").onclick=()=>{ const q=GAME.qs[GAME.i]; const r=rec(q.w[0]); if(!WMAP[q.w[0].toLowerCase()]) r.m=q.w[1]; r.s=!r.s; save(); $("q-star").classList.toggle("on",r.s); toast(r.s?"⭐ 단어장 별표에 넣었어요":"별표를 뺐어요"); };
+$("q-star").onclick=()=>{ const q=GAME.qs[GAME.i]; const r=rec(q.w[0]); if(!WMAP[q.w[0].toLowerCase()]) r.m=q.w[1]; r.s=!r.s; save(); $("q-star").classList.toggle("on",r.s); toast(r.s?"⭐ 오답 노트 별표에 넣었어요":"별표를 뺐어요"); };
 $("q-quit").onclick=()=>{ if(confirm("그만할까요? 지금까지 맞힌 건 기록돼요")) { GAME=null; go("home"); } };
 
 /* ===================== 결과 ===================== */
@@ -736,12 +779,27 @@ async function finish(){
   const nb=nextBadges()[0]; if(nb) push.push(`<div class="blue">🏅 ${badgeTip(nb)} 배지!</div>`);
   if(!isMember()) push.push(`<div class="blue">🙋 회원가입하면 이 기록으로 등수가 나와요!</div>`);
   $("r-push").innerHTML=push.join(""); $("r-rank").textContent="";
+  const wrongs=g.log.filter(x=>!x.ok).map(x=>x.w); $("r-wrong").classList.toggle("hidden",!wrongs.length); $("r-wrong").onclick=()=>startGame("book",wrongs);
   if(got.length) popBadges(got); else showPop();
   if(isMember()){
     syncUp(); await new Promise(r=>setTimeout(r,1600));
     const r=await fetchMyRank(); if(!r||CUR!=="result") return;
     const b=g.before.rank;
     $("r-rank").innerHTML = (g.before.week===0) ? `🎉 이번 주 랭킹 <b>${r.week}등</b>으로 첫 등장!` : (b && r.week<b) ? `🚀 이번 주 등수가 <b>${b-r.week}계단</b> 올랐어요! (${b}등 → ${r.week}등)` : `이번 주 <b>${r.week}등</b>`;
+    // 추월: 이번 판 전에는 나보다 위였는데 지금은 아래인 사람
+    if(g.before.week>0){
+      try{ const c=sbc(); const pr=await c.from("word_players").select("nickname").eq("week_key",weekKey()).gte("week",g.before.week).lt("week",STATE.week).neq("nickname",myNick()).limit(50);
+        const names=((pr&&pr.data)||[]).map(x=>x.nickname);
+        if(names.length && CUR==="result"){
+          STATE.ov=(STATE.ov||0)+names.length; STATE.ovMax=Math.max(STATE.ovMax||0,names.length);
+          const pb=STATE.passedBy||[], rv=names.filter(n=>pb.includes(n)); if(rv.length){ STATE.revenge=1; STATE.passedBy=pb.filter(n=>!rv.includes(n)); }
+          const show=names.slice(0,3).map(esc).join(", ")+(names.length>3?` 외 ${names.length-3}명`:"");
+          const nextP=[1,10,50].find(x=>x>STATE.ov);
+          $("r-push").insertAdjacentHTML("afterbegin",`<div>🏎️ <b>${show}</b>님을 추월했어요!${rv.length?` 😤 리벤지 성공!`:""}<br><small>누적 추월 ${fmt(STATE.ov)}명${nextP?` · 「추월 ${nextP}명」 배지까지 ${nextP-STATE.ov}명`:""}</small></div>`);
+          const got2=checkBadges(); save(); if(got2.length) popBadges(got2);
+        }
+      }catch(e){}
+    }
     if(r.aboveW) $("r-push").insertAdjacentHTML("afterbegin",`<div class="blue">🔥 <b>${r.aboveW.week-STATE.week+1}개</b>만 더 맞히면 ${r.week-1}등 <b>${esc(r.aboveW.nickname)}</b>님을 따라잡아요!</div>`);
   }
 }
@@ -784,8 +842,10 @@ $("rk-stages").onclick=e=>{ const b=e.target.closest("[data-rs]"); if(b){ RS=b.d
 RENDER.badges = function(){
   const have=BADGES.filter(b=>STATE.bd[b.id]).length;
   $("bd-sum").textContent=`${have} / ${BADGES.length}개 모았어요. 흐린 배지는 아직 못 받은 배지예요.`;
-  $("bd-grid").innerHTML=BADGES.map(b=>{ const on=!!STATE.bd[b.id], n=needOf(b), c=Math.min(n,b.cnt(STATE));
-    return `<div class="bdg ${on?"":"lock"}"><span class="e">${b.e}</span><b>${esc(b.n)}</b><span>${on?"획득 "+STATE.bd[b.id].slice(5).replace("-","/"):(b.manual?esc(b.d):`${fmt(c)} / ${fmt(n)}`)}</span></div>`; }).join("");
+  const one=b=>{ const on=!!STATE.bd[b.id], n=needOf(b), c=Math.min(n,b.cnt(STATE));
+    return `<div class="bdg ${on?"":"lock"}"><span class="e">${b.e}</span><b>${esc(b.n)}</b><span>${on?"획득 "+STATE.bd[b.id].slice(5).replace("-","/"):(n>1&&!/^(day100)$/.test(b.id)?`${fmt(c)} / ${fmt(n)}`:esc(b.d))}</span></div>`; };
+  $("bd-grid").innerHTML=BADGE_GROUPS.map(([g,t])=>{ const L=BADGES.filter(b=>b.g===g); const h=L.filter(b=>STATE.bd[b.id]).length;
+    return `<h3 class="bgh">${t} <small>${h}/${L.length}</small></h3><div class="bgrid">${L.map(one).join("")}</div>`; }).join("");
 };
 
 /* ===================== 단어장 ===================== */
@@ -795,7 +855,9 @@ function bookWords(t){ const out=[]; for(const k in STATE.w){ const r=STATE.w[k]
 RENDER.book = function(){
   document.querySelectorAll("[data-bt]").forEach(b=>b.classList.toggle("on",b.dataset.bt===BT));
   const L=bookWords(BT);
-  const empty={wrong:"헷갈리는 단어가 없어요 👍",star:"문제 화면에서 ⭐를 누르면 여기에 모여요",done:"세 번 이상 연속으로 맞힌 단어가 여기에 모여요"}[BT];
+  const nw=bookWords("wrong").length, nb=BADGES.filter(b=>b.g==="note"&&!STATE.bd[b.id]&&b.u).map(b=>({b,left:needOf(b)-b.cnt(STATE)})).filter(x=>x.left>0)[0];
+  $("bk-push").innerHTML=`<div class="blue">✅ 지금까지 해결한 단어 <b>${fmt(STATE.revDone||0)}개</b> · 남은 틀린 단어 <b>${fmt(nw)}개</b><br><small>틀린 단어를 세 번 연속 맞히면 "해결"돼요</small></div>`+(nb?`<div>🏅 ${badgeTip(nb)} 배지를 받아요!</div>`:"");
+  const empty={wrong:"틀린 단어가 없어요 👍 깨끗한 오답 노트!",star:"문제 화면에서 ⭐를 누르면 여기에 모여요",done:"세 번 이상 연속으로 맞힌 단어가 여기에 모여요"}[BT];
   $("bk-list").innerHTML = L.length ? L.map(([w,m,r])=>`<li><b>${esc(w)}</b><span>${esc(m)}</span><button class="mini" data-say="${esc(w)}">🔊</button></li>`).join("") : `<li class="note">${empty}</li>`;
   $("bk-play").classList.toggle("hidden", L.length<1);
 };
@@ -940,6 +1002,7 @@ $("si-edit").onclick=()=>{ const s=SETCUR; EDIT={id:s.id,title:s.title,words:s.w
 $("si-share").onclick=async()=>{
   const s=SETCUR;
   if(!s.shared){ if(!isMember()){ toast("공유하려면 회원가입이 필요해요 🙋",2800); MB_MODE="signup"; go("member"); return; } const ok=await uploadSet(s); if(!ok){ toast("지금은 공유 서버에 연결이 안 돼요. 잠시 뒤 다시 해 주세요",3000); return; } s.shared=true; }
+  if((s.ownerNick||"")===(myNick()||"__guest")){ STATE.shares=(STATE.shares||0)+1; const gs=checkBadges(); save(); if(gs.length) popBadges(gs); }
   shareIt(`📚 「${s.title}」 ${s.words.length}단어 문제집!\n${s.ownerNick&&s.ownerNick!=="__guest"?s.ownerNick+"님이 만든 ":""}문제집, 정복해 볼래? 🚩`, CONFIG.BASE_URL+"?set="+encodeURIComponent(s.id));
 };
 
