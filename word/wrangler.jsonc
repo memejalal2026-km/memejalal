@@ -1,0 +1,6 @@
+{
+  "name": "wordking",
+  "compatibility_date": "2026-10-01",
+  // 단어왕 되기! : 이 폴더(word)의 파일을 그대로 보여 주는 사이트
+  "assets": { "directory": "./" }
+}
