@@ -45,6 +45,28 @@ input,textarea{font:inherit;color:inherit}
 .lang{flex:0 0 auto;padding:8px 12px;border-radius:999px;background:var(--card);box-shadow:var(--sh);font-size:14px;white-space:nowrap}
 .lang.on{background:var(--pri);color:#fff}
 .lang.off{opacity:.55}
+.langs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;overflow:visible;padding-bottom:0;margin:12px 0 4px}
+.lang{padding:11px 2px;border-radius:12px;background:var(--card);border:2px solid var(--line);box-shadow:none;font-weight:700;font-size:14px;text-align:center}
+.lang.on{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 3px 0 var(--pri2)}
+.lang.off{opacity:1;color:#9aa1c2;font-weight:500;background:transparent;border-style:dashed}
+.srcline{text-align:center;color:var(--sub);font-size:11px;margin:4px 0 12px}
+.stagecard{display:flex;align-items:center;gap:12px;width:100%;text-align:left}
+.stagecard .sico{width:46px;height:46px;border-radius:14px;background:var(--pri-soft);display:grid;place-items:center;font-size:22px;flex:0 0 auto}
+.stagecard .sinfo{flex:1;min-width:0}.stagecard .slbl{font-size:12px;color:var(--sub);font-weight:700}
+.stagecard .sname{font-size:19px;font-weight:800}.stagecard .ssub{font-size:12px;color:var(--sub)}
+.stagecard .sgo{color:var(--pri);font-weight:800;font-size:22px}
+.prog{font-style:normal;font-size:12px;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:99px;padding:2px 8px;margin-left:auto}
+.kick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.kcard{border-radius:18px;padding:14px 12px;color:#fff;min-height:128px;display:flex;flex-direction:column;text-align:left;box-shadow:var(--sh)}
+.kcard.k1{background:linear-gradient(145deg,#7a5cff,#3b5bfd)}.kcard.k2{background:linear-gradient(145deg,#ffb92e,#ff8a1f);color:#3a2500}
+.kcard .kt{font-weight:800;font-size:16px;margin-bottom:6px}.kcard .kd{font-size:12.5px;line-height:1.5;flex:1}
+.kcard .kb{margin-top:8px;background:rgba(255,255,255,.25);border-radius:10px;padding:8px;text-align:center;font-weight:800;font-size:13px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.grid4 .tile{padding:10px 0;font-size:12px;white-space:nowrap}.grid4 .tile .ic{font-size:22px;margin-bottom:2px}
+.grid4 .tile .dot{top:-5px;right:-2px}
+.guestbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}.guestbar:empty{display:none}
+.guestbar .abtn{background:#FEE500;color:#191919;border:1px solid #E6CE00;border-radius:8px;padding:12px;font-weight:700;font-size:15px;white-space:nowrap;box-shadow:none;margin:0;width:auto}
+.lobtn{flex:0 0 auto;white-space:nowrap;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700}
 .me-row{display:flex;align-items:center;gap:12px}
 .lvbadge{width:56px;height:56px;border-radius:16px;background:var(--gold-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Jua,sans-serif;flex:0 0 auto}
 .lvbadge b{font-size:22px;line-height:1}.lvbadge small{font-size:11px;color:#9a6b00}
@@ -183,10 +205,10 @@ input,textarea{font:inherit;color:inherit}
   <div class="title"><span class="crown">👑</span> 단어왕 되기!</div>
   <div class="tag">틈틈이 풀고, 등수 올리고, 단어왕까지!</div>
   <div class="stats" id="h-stats"><span>👥 회원 <b id="st-m">-</b></span><i>·</i><span>🟢 접속 중 <b id="st-o">-</b></span><i>·</i><span>📊 누적 <b id="st-v">-</b></span></div>
-  <div class="authbar" id="h-auth"></div>
   <div class="langs" id="langs"></div>
-  <div style="text-align:center;color:var(--sub);font-size:11px;margin:-4px 0 10px">국어 낱말 출처: 국립국어원 「한국어 학습용 어휘 목록」</div>
+  <div class="srcline" id="h-src"></div>
 
+  <div class="guestbar" id="h-auth"></div>
   <div class="card">
     <div class="me-row">
       <div class="lvbadge"><b id="h-lv">1</b><small>LEVEL</small></div>
@@ -196,6 +218,7 @@ input,textarea{font:inherit;color:inherit}
         <div class="bar"><i id="h-lvbar" style="width:0"></i></div>
         <div class="me-sub" id="h-lvleft" style="margin-top:4px"></div>
       </div>
+      <button class="lobtn hidden" id="h-logout">로그아웃</button>
     </div>
     <div class="stats">
       <div class="stat"><b id="h-rank">-</b><span>이번 주 등수</span></div>
@@ -214,16 +237,19 @@ input,textarea{font:inherit;color:inherit}
 
   <div class="push" id="h-push" style="margin-bottom:12px"></div>
 
-  <button class="btn" id="h-play">▶ 공부 시작<small id="h-stage">초등 기초 · 10문제</small></button>
-  <div class="grid2">
+  <button class="card stagecard" id="h-stagecard"><div class="sico">📖</div><div class="sinfo"><div class="slbl">지금 푸는 단계</div><div class="sname" id="h-stname">-</div><div class="ssub" id="h-stsub"></div><div class="ssub" id="h-stage"></div></div><span class="sgo">›</span></button>
+  <button class="btn" id="h-play" style="font-size:22px;padding:18px">▶ 공부 시작</button>
+  <div class="kick">
+    <button class="kcard k1" id="h-sets"><div class="kt">📸 나만의 문제집</div><div class="kd">내가 직접 문제를 만들고<br>친구와 같이 풀어 보세요</div><div class="kb">문제 출제하기 ›</div></button>
+    <button class="kcard k2" id="h-badges"><div class="kt">🏅 배지함</div><div class="kd" id="h-bdtxt">모은 배지</div><div class="kb">배지 보기 ›</div></button>
+  </div>
+  <div class="grid4">
     <button class="tile" id="h-review"><span class="ic">🔁</span>복습하기<span class="dot hidden" id="h-revn"></span></button>
     <button class="tile" id="h-stagebtn"><span class="ic">🎚️</span>단계 바꾸기</button>
-    <button class="tile" id="h-sets"><span class="ic">📸</span>나만의 문제집</button>
     <button class="tile" id="h-book"><span class="ic">📝</span>오답 노트<span class="dot hidden" id="h-bookn"></span></button>
     <button class="tile" id="h-rankbtn"><span class="ic">🏆</span>랭킹</button>
-    <button class="tile" id="h-badges"><span class="ic">🏅</span>배지함</button>
   </div>
-  <div class="foot">단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)<br><a href="privacy.html">개인정보처리방침</a> · <a href="contact.html">문의</a></div>
+  <div class="foot"><span id="h-basis">단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)</span><br><a href="privacy.html">개인정보처리방침</a> · <a href="contact.html">문의</a></div>
 </section>
 
 <!-- 단계 -->
@@ -509,6 +535,9 @@ const BADGES = [
   {g:"note",id:"note1",u:"개만 더 해결하면",e:"🩹",n:"첫 해결",d:"오답 노트 단어 1개 해결",cnt:s=>s.revDone||0,need:1},
   {g:"note",id:"note20",u:"개만 더 해결하면",e:"🧹",n:"오답 청소부",d:"오답 노트 단어 20개 해결",cnt:s=>s.revDone||0,need:20},
   {g:"note",id:"rev50",u:"개만 더 해결하면",e:"🧠",n:"복습왕",d:"오답 노트 단어 50개 해결",cnt:s=>s.revDone||0,need:50},
+  {g:"note",id:"smash5",u:"개만 더 격파하면",e:"💥",n:"오답 격파",d:"오답 5개 격파 (같은 단어를 세 번 연속 맞히기)",cnt:s=>s.revDone||0,need:5},
+  {g:"note",id:"smash30",u:"개만 더 격파하면",e:"🔨",n:"오답 격파 달인",d:"오답 30개 격파",cnt:s=>s.revDone||0,need:30},
+  {g:"note",id:"smash100",u:"개만 더 격파하면",e:"🚀",n:"오답 격파왕",d:"오답 100개 격파",cnt:s=>s.revDone||0,need:100},
   {g:"note",id:"note200",u:"개만 더 해결하면",e:"🏅",n:"오답 정복자",d:"오답 노트 단어 200개 해결",cnt:s=>s.revDone||0,need:200},
   {g:"note",id:"noteClear",e:"✅",n:"오답 노트 비우기",d:"10개 넘게 쌓인 오답 노트를 0개로 만들기",cnt:s=>s.noteClear||0,need:1,manual:true},
   {g:"habit",id:"goal7",u:"번 더 오늘의 목표를 채우면",e:"⭐",n:"목표 달성 7번",d:"오늘의 목표 7번 채우기",cnt:s=>s.goalDays||0,need:7},
@@ -604,7 +633,7 @@ const RENDER={};
 
 /* ===================== 시작 화면 ===================== */
 RENDER.home = async function(){
-  $("langs").innerHTML=LANGS.map(l=>`<button class="lang ${l.on?(l.k===LANG?"on":""):"off"}" data-l="${l.k}">${l.flag} ${l.name}${l.on?"":" · 준비 중"}</button>`).join("");
+  $("langs").innerHTML=LANGS.map(l=>`<button class="lang ${l.on?(l.k===LANG?"on":""):"off"}" data-l="${l.k}">${l.name}${l.on?"":" 🔒"}</button>`).join("");
   const lv=levelOf(STATE.total), L=LEVELS[lv], nx=LEVELS[lv+1];
   $("h-lv").textContent=lv+1; $("h-lvname").textContent=L[1];
   $("h-name").textContent=nickName()+(isMember()?"":" (가입 전)");
@@ -613,12 +642,14 @@ RENDER.home = async function(){
   $("h-total").textContent=fmt(STATE.total); $("h-streak").textContent=STATE.att.streak+"일";
   const g=STATE.goal, n=STATE.day.n; $("h-goalbar").style.width=Math.min(100,Math.round(n/g*100))+"%";
   $("h-goaltxt").textContent = n>=g ? `🎉 오늘 목표 달성! (${n}/${g}) 더 하면 등수가 더 올라가요` : `오늘 ${n}/${g}개 · 목표까지 ${g-n}개 남았어요`;
-  const st=stageOf(STATE.stage); $("h-stage").textContent=`${st.name} (${st.sub}) · ${CONFIG.PER_GAME}문제`;
+  const st=stageOf(STATE.stage); $("h-stname").textContent=st.name; $("h-stsub").textContent=st.sub; $("h-stage").textContent=`${fmt(st.words.length)}${st.unit||"개 단어"} · 한 판 ${CONFIG.PER_GAME}문제`;
+  $("h-basis").textContent = LANG==="ko" ? "국어 낱말: 국립국어원 「한국어 학습용 어휘 목록」 · 고사성어·속담·맞춤법은 직접 정리" : "단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)";
+  $("h-src").textContent = LANG==="ko" ? "국어 낱말 출처: 국립국어원 「한국어 학습용 어휘 목록」" : "";
+  { const hv=BADGES.filter(b=>STATE.bd[b.id]).length; $("h-bdtxt").innerHTML=`모은 배지 <b>${hv}</b> / ${BADGES.length}개<br>새 배지에 도전해 보세요`; }
   const due=dueWords().length; $("h-revn").textContent=due; $("h-revn").classList.toggle("hidden",!due);
   const nwr=bookWords("wrong").length; $("h-bookn").textContent=nwr; $("h-bookn").classList.toggle("hidden",!nwr);
-  $("h-auth").innerHTML = isMember()
-    ? `<span class="who">👤 <b>${esc(myNick())}</b>님</span><button class="abtn ghost" id="h-logout">로그아웃</button>`
-    : `<span class="who">🙋 가입하면<br>등수에 이름이 올라가요</span><button class="abtn ghost" id="h-login">로그인</button><button class="abtn" id="h-signup">회원가입</button>`;
+  $("h-auth").innerHTML = isMember() ? "" : `<button class="abtn" id="h-login">로그인</button><button class="abtn" id="h-signup">회원가입</button>`;
+  $("h-logout").classList.toggle("hidden", !isMember());
   const hl=$("h-login"), hs=$("h-signup"), ho=$("h-logout");
   if(hl) hl.onclick=()=>{ MB_MODE="login"; go("member"); };
   if(hs) hs.onclick=()=>{ MB_MODE="signup"; go("member"); };
@@ -650,7 +681,7 @@ $("langs").onclick=e=>{ const b=e.target.closest(".lang"); if(!b) return; const 
 $("h-goalset").onclick=()=>{ const i=CONFIG.GOALS.indexOf(STATE.goal); STATE.goal=CONFIG.GOALS[(i+1)%CONFIG.GOALS.length]; save(); toast(`오늘의 목표: 하루 ${STATE.goal}단어`); RENDER.home(); };
 $("h-play").onclick=()=>startGame("stage");
 $("h-review").onclick=()=>{ if(!dueWords().length){ toast("지금 복습할 단어가 없어요 👍 틀린 단어는 하루 뒤에 여기로 와요"); return; } startGame("review"); };
-$("h-stagebtn").onclick=()=>go("stage");
+$("h-stagebtn").onclick=()=>go("stage"); $("h-stagecard").onclick=()=>go("stage");
 $("h-sets").onclick=()=>go("sets");
 $("h-book").onclick=()=>go("book");
 $("h-rankbtn").onclick=()=>go("rank");
@@ -753,7 +784,7 @@ function answer(ok, typed, btn){
     const wasWrong=r.x>0 && r.b<3;
     r.c++; r.b=Math.min(5,r.b+1); r.d=addDays(t,GAP[r.b]); GAME.right++;
     STATE.total++; STATE.week++; STATE.day.n++;
-    if(wasWrong && r.b>=3) STATE.revDone++;
+    if(wasWrong && r.b>=3){ STATE.revDone++; GAME.smash=(GAME.smash||0)+1; toast(`💥 오답 격파! ${q.w[0]} · 오답 노트에서 빠졌어요`); }
     STATE.combo=(STATE.combo||0)+1; STATE.bestCombo=Math.max(STATE.bestCombo||0,STATE.combo);
     if(STATE.day.n===STATE.goal) STATE.goalDays=(STATE.goalDays||0)+1;
     STATE.dayBest=Math.max(STATE.dayBest||0,STATE.day.n);
@@ -881,9 +912,9 @@ RENDER.book = function(){
   document.querySelectorAll("[data-bt]").forEach(b=>b.classList.toggle("on",b.dataset.bt===BT));
   const L=bookWords(BT);
   const nw=bookWords("wrong").length, nb=BADGES.filter(b=>b.g==="note"&&!STATE.bd[b.id]&&b.u).map(b=>({b,left:needOf(b)-b.cnt(STATE)})).filter(x=>x.left>0)[0];
-  $("bk-push").innerHTML=`<div class="blue">✅ 지금까지 해결한 단어 <b>${fmt(STATE.revDone||0)}개</b> · 남은 틀린 단어 <b>${fmt(nw)}개</b><br><small>틀린 단어를 세 번 연속 맞히면 "해결"돼요</small></div>`+(nb?`<div>🏅 ${badgeTip(nb)} 배지를 받아요!</div>`:"");
+  $("bk-push").innerHTML=`<div class="blue">✅ 지금까지 해결한 단어 <b>${fmt(STATE.revDone||0)}개</b> · 남은 틀린 단어 <b>${fmt(nw)}개</b><br><small>같은 단어를 세 번 연속 맞히면 💥 격파! 오답 노트에서 빠져요</small></div>`+(nb?`<div>🏅 ${badgeTip(nb)} 배지를 받아요!</div>`:"");
   const empty={wrong:"틀린 단어가 없어요 👍 깨끗한 오답 노트!",star:"문제 화면에서 ⭐를 누르면 여기에 모여요",done:"세 번 이상 연속으로 맞힌 단어가 여기에 모여요"}[BT];
-  $("bk-list").innerHTML = L.length ? L.map(([w,m,r])=>`<li><b>${esc(w)}</b><span>${esc(m)}</span>${isKo(w)?"":`<button class="mini" data-say="${esc(w)}">🔊</button>`}</li>`).join("") : `<li class="note">${empty}</li>`;
+  $("bk-list").innerHTML = L.length ? L.map(([w,m,r])=>`<li><b>${esc(w)}</b><span>${esc(m)}</span>${BT==="wrong"?`<em class="prog">${Math.min(2,r.b||0)}/3</em>`:""}${isKo(w)?"":`<button class="mini" data-say="${esc(w)}">🔊</button>`}</li>`).join("") : `<li class="note">${empty}</li>`;
   $("bk-play").classList.toggle("hidden", L.length<1);
 };
 document.querySelector("#s-book .tabs").onclick=e=>{ const b=e.target.closest("[data-bt]"); if(b){ BT=b.dataset.bt; RENDER.book(); } };
