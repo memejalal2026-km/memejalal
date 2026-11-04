@@ -12,6 +12,7 @@
 <meta property="og:image" content="https://wordking.memejalal2026.workers.dev/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#3b5bfd">
+<link rel="manifest" href="manifest.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="단어왕"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,6 +57,7 @@ input,textarea{font:inherit;color:inherit}
 .stagecard .sname{font-size:19px;font-weight:800}.stagecard .ssub{font-size:12px;color:var(--sub)}
 .stagecard .sgo{color:var(--pri);font-weight:800;font-size:22px}
 .prog{font-style:normal;font-size:12px;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:99px;padding:2px 8px;margin-left:auto}
+.addbtn{display:block;width:100%;margin:0 0 12px}.addbtn small{display:block;font-weight:500;font-size:12px;color:var(--sub)}.tile.addbtn .ic{display:inline;font-size:20px;margin:0 6px 0 0}
 .rdline{font-size:15px;font-weight:600;color:var(--sub);margin-top:6px}
 .rdopt{opacity:.65;font-size:12px;font-weight:600;margin-left:6px}
 .kick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
@@ -195,6 +197,7 @@ input,textarea{font:inherit;color:inherit}
 .pop{position:fixed;inset:0;background:rgba(20,26,60,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:40}
 .pop.on{display:flex}
 .pop .card{width:100%;max-width:400px;text-align:center;animation:fade .2s}
+#add-body ol{padding-left:20px;margin:8px 0}#add-body li{margin:6px 0}
 .pop .e{font-size:64px;display:block}
 .hidden{display:none!important}
 </style>
@@ -251,6 +254,7 @@ input,textarea{font:inherit;color:inherit}
     <button class="tile" id="h-book"><span class="ic">📝</span>오답 노트<span class="dot hidden" id="h-bookn"></span></button>
     <button class="tile" id="h-rankbtn"><span class="ic">🏆</span>랭킹</button>
   </div>
+  <button class="tile addbtn hidden" id="h-add"><span class="ic">📲</span>홈 화면에 추가하기<small>앱처럼 바로 열어요</small></button>
   <div class="foot"><span id="h-basis">단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)</span><br><a href="privacy.html">개인정보처리방침</a> · <a href="contact.html">문의</a></div>
 </section>
 
@@ -381,6 +385,7 @@ input,textarea{font:inherit;color:inherit}
 
 </div>
 
+<div class="pop" id="add-pop"><div class="card"><span class="e">📲</span><h3 style="margin:6px 0">홈 화면에 추가하는 방법</h3><div id="add-body" style="text-align:left;font-size:15px"></div><button class="btn" id="add-close" style="margin-top:12px">알겠어요</button></div></div>
 <div class="pop" id="pop"><div class="card"><span class="e" id="pop-e">🏅</span><h3 id="pop-t" style="margin:6px 0"></h3><p id="pop-d" class="note"></p><button class="btn" id="pop-ok" style="margin:12px 0 0">좋아요!</button></div></div>
 <div class="toast" id="toast"></div>
 
@@ -1133,6 +1138,21 @@ async function pingStats(){
   const c=sbc(); if(!c) return;
   try{ await c.rpc("wk_ping",{p_cid:cidGet()}); const r=await c.rpc("wk_stats"); const d=r.data; if(d){ const f=n=>Number(n).toLocaleString("ko-KR"); if($("st-m")){ $("st-m").textContent=f(d.members); $("st-o").textContent=f(d.online); $("st-v").textContent=f(d.visits); } } }catch(e){}
 }
+/* ===================== 홈 화면에 추가 ===================== */
+let DEFERRED_INSTALL=null;
+const isStandalone = () => (window.matchMedia&&matchMedia("(display-mode: standalone)").matches) || navigator.standalone===true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function refreshAddBtn(){ const b=$("h-add"); if(b) b.classList.toggle("hidden", isStandalone()); }
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); DEFERRED_INSTALL=e; });
+window.addEventListener("appinstalled",()=>{ DEFERRED_INSTALL=null; refreshAddBtn(); toast("홈 화면에 추가됐어요! 🎉"); });
+$("h-add").onclick=async()=>{
+  if(DEFERRED_INSTALL){ DEFERRED_INSTALL.prompt(); try{ await DEFERRED_INSTALL.userChoice; }catch(e){} DEFERRED_INSTALL=null; return; }
+  const m=$("add-pop"); $("add-body").innerHTML = isIOS()
+    ? "<ol><li>아래쪽(또는 위쪽)의 <b>공유 버튼 ⬆️</b>을 눌러요</li><li>목록에서 <b>「홈 화면에 추가」</b>를 눌러요</li><li>오른쪽 위 <b>「추가」</b>를 눌러요</li></ol><p class='note'>사파리(Safari)에서 열어야 보여요. 카카오톡 안에서 열었다면 먼저 사파리로 열어 주세요.</p>"
+    : "<ol><li>크롬 오른쪽 위 <b>⋮ 메뉴</b>를 눌러요</li><li><b>「홈 화면에 추가」</b> 또는 <b>「앱 설치」</b>를 눌러요</li><li><b>「설치」</b>를 눌러요</li></ol><p class='note'>카카오톡 안에서 열었다면 먼저 크롬으로 열어 주세요.</p>";
+  m.classList.add("on"); };
+$("add-close").onclick=()=>$("add-pop").classList.remove("on");
+refreshAddBtn();
 pingStats(); setInterval(()=>{ if(!document.hidden) pingStats(); },60000);
 </script>
 </body>
