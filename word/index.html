@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <script>if(/^memejalal\./.test(location.hostname)&&/\/word\//.test(location.pathname))location.replace("https://wordking.memejalal2026.workers.dev/"+location.search);</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>단어왕 되기! · 틈틈이 영단어 퀴즈</title>
+<title>단어왕 · 틈틈이 영단어 퀴즈</title>
 <meta name="description" content="초등부터 수능·생활 영어까지 학년별 영어 단어 퀴즈. 등수·배지·레벨로 매일 조금씩, 단어왕에 도전하세요. 사진으로 나만의 문제집도 만들 수 있어요.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="단어왕 되기! 👑 틈틈이 영단어 퀴즈">
+<meta property="og:title" content="단어왕 👑 틈틈이 영단어 퀴즈">
 <meta property="og:description" content="학년별 영어 단어 퀴즈 · 등수 · 배지 · 사진으로 나만의 문제집">
 <meta property="og:image" content="https://wordking.memejalal2026.workers.dev/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -207,7 +207,7 @@ input,textarea{font:inherit;color:inherit}
 
 <!-- 시작 -->
 <section class="screen on" id="s-home">
-  <div class="title"><span class="crown">👑</span> 단어왕 되기!</div>
+  <div class="title"><span class="crown">👑</span> 단어왕</div>
   <div class="tag">틈틈이 풀고, 등수 올리고, 단어왕까지!</div>
   <div class="stats" id="h-stats"><span>👥 회원 <b id="st-m">-</b></span><i>·</i><span>🟢 접속 중 <b id="st-o">-</b></span><i>·</i><span>📊 누적 <b id="st-v">-</b></span></div>
   <div class="langs" id="langs"></div>
@@ -561,7 +561,6 @@ const BADGES = [
   {g:"skill",id:"perfect",u:"번 더 만점을 받으면",e:"🎯",n:"만점",d:"한 판 만점 받기",cnt:s=>s.perfect,need:1},
   {g:"skill",id:"perfect10",u:"번 더 만점을 받으면",e:"🏹",n:"만점 10번",d:"만점 10번 받기",cnt:s=>s.perfect,need:10},
   {g:"type",id:"listen50",u:"개만 더 맞히면(듣기)",e:"🎧",n:"귀가 트였다",d:"듣기 문제 50개 맞히기",cnt:s=>s.lis||0,need:50},
-  {g:"type",id:"spell50",u:"개만 더 맞히면(철자)",e:"✍️",n:"철자 달인",d:"철자 채우기 50개 맞히기",cnt:s=>s.spl||0,need:50},
   {g:"stage",id:"st_e1",u:"개만 더 맞히면",e:"🐣",n:"초등 기초 정복",d:"초등 기초 단어 전부 맞히기",cnt:s=>stageDone(s,"e1"),need:()=>stageOf("e1").words.length},
   {g:"stage",id:"st_e2",u:"개만 더 맞히면",e:"🐥",n:"초등 심화 정복",d:"초등 심화 단어 전부 맞히기",cnt:s=>stageDone(s,"e2"),need:()=>stageOf("e2").words.length},
   {g:"stage",id:"st_m",u:"개만 더 맞히면",e:"🦅",n:"중학 정복",d:"중학 단어 전부 맞히기",cnt:s=>stageDone(s,"m"),need:()=>stageOf("m").words.length},
@@ -765,7 +764,7 @@ function makeQ(word, pool){
   if(kd==="pair"){ const q=choice(word, word[2].a, word[2].d); q.t="pair"; return q; }
   if(kd==="blank" && Math.random()<.34){ const q=choice(word, word[2].b, word[2].d); q.t="blank"; return q; }
   const ko = kd==="ko" || kd==="blank", ja = kd==="ja";
-  const types=["e2k","k2e","e2k","k2e"]; if(!ko && !ja){ types.push("spell"); if(canSpeak()) types.push("listen","listen"); }
+  const types=["e2k","k2e","e2k","k2e"]; if(!ko && !ja){ if(canSpeak()) types.push("listen","listen"); }
   const rd=jaRead(word);
   if(ja){ if(rd) types.push("read","read"); if(canSpeak()) types.push("listen"); }
   let t=types[Math.floor(Math.random()*types.length)];
@@ -907,10 +906,10 @@ async function finish(){
 }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b) speak(b.dataset.say); });
 $("r-again").onclick=()=>{ const g=GAME; if(g&&g.mode==="set") startGame("set",g.setInfo.words,g.setInfo); else if(g&&g.mode==="review"&&dueWords().length) startGame("review"); else startGame("stage"); };
-$("r-share").onclick=()=>{ const g=GAME; const lv=levelOf(STATE.total); shareIt(`👑 단어왕 되기! 영어 단어 ${g.right}/${g.qs.length} 맞혔어요\nLv.${lv+1} ${LEVELS[lv][1]} · 누적 ${fmt(STATE.total)}단어\n나랑 단어 대결할래?`, CONFIG.BASE_URL); };
+$("r-share").onclick=()=>{ const g=GAME; const lv=levelOf(STATE.total); shareIt(`👑 단어왕 영어 단어 ${g.right}/${g.qs.length} 맞혔어요\nLv.${lv+1} ${LEVELS[lv][1]} · 누적 ${fmt(STATE.total)}단어\n나랑 단어 대결할래?`, CONFIG.BASE_URL); };
 
 async function shareIt(text,url){
-  try{ if(navigator.share){ await navigator.share({title:"단어왕 되기!", text, url}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ if(navigator.share){ await navigator.share({title:"단어왕", text, url}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
   try{ await navigator.clipboard.writeText(text+"\n"+url); toast("📋 링크를 복사했어요. 카톡에 붙여넣기 하세요!"); }catch(e){ prompt("아래 내용을 복사하세요", text+"\n"+url); }
 }
 

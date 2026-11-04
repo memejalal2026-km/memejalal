@@ -1,5 +1,5 @@
 {
-  "name": "단어왕 되기!",
+  "name": "단어왕",
   "short_name": "단어왕",
   "description": "틈틈이 풀고, 등수 올리고, 단어왕까지!",
   "start_url": "./index.html",
