@@ -400,7 +400,7 @@ const LEVELS = [ // [필요한 누적 맞힌 수, 이름]
 const LANGS = [
   {k:"en", name:"영어", flag:"🇺🇸", on:true},
   {k:"ko", name:"국어", flag:"🇰🇷", on:true},
-  {k:"ja", name:"일본어", flag:"🇯🇵", on:false},
+  {k:"ja", name:"일본어", flag:"🇯🇵", on:true},
   {k:"zh", name:"중국어", flag:"🇨🇳", on:false}
 ];
 
@@ -422,7 +422,9 @@ const STAGES = []; Object.keys(WORDS).forEach(l=>WORDS[l].stages.forEach(s=>{ s.
 const stageOf = k => STAGES.find(s=>s.k===k) || STAGES[0];
 const WMAP = {}; STAGES.forEach(s=>s.words.forEach(it=>{ const w=it[0], m=it[1]; if(!WMAP[w.toLowerCase()]) WMAP[w.toLowerCase()]={w,m,st:s.k,x:it}; }));
 const isKo = w => /[가-힣]/.test(w);
-const keyOf = w => (isKo(w)?"ko:":"en:")+w.toLowerCase();
+const isJa = w => !isKo(w) && /[\u3040-\u30ff\u4e00-\u9fff]/.test(w);
+const langOf = w => isKo(w)?"ko":isJa(w)?"ja":"en";
+const keyOf = w => langOf(w)+":"+w.toLowerCase();
 const mainMean = m => String(m).split(/[,/]/)[0].replace(/\(.*?\)/g,"").replace(/[\s.!?~]/g,"").replace(/요$/,"").trim(); // 비슷한 뜻 보기 겹침 방지
 
 /* ===================== 저장 (이 기기 + 서버) ===================== */
@@ -643,8 +645,8 @@ RENDER.home = async function(){
   const g=STATE.goal, n=STATE.day.n; $("h-goalbar").style.width=Math.min(100,Math.round(n/g*100))+"%";
   $("h-goaltxt").textContent = n>=g ? `🎉 오늘 목표 달성! (${n}/${g}) 더 하면 등수가 더 올라가요` : `오늘 ${n}/${g}개 · 목표까지 ${g-n}개 남았어요`;
   const st=stageOf(STATE.stage); $("h-stname").textContent=st.name; $("h-stsub").textContent=st.sub; $("h-stage").textContent=`${fmt(st.words.length)}${st.unit||"개 단어"} · 한 판 ${CONFIG.PER_GAME}문제`;
-  $("h-basis").textContent = LANG==="ko" ? "국어 낱말: 국립국어원 「한국어 학습용 어휘 목록」 · 고사성어·속담·맞춤법은 직접 정리" : "단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)";
-  $("h-src").textContent = LANG==="ko" ? "국어 낱말 출처: 국립국어원 「한국어 학습용 어휘 목록」" : "";
+  $("h-basis").textContent = LANG==="ja" ? "일본어 낱말: JLPT 급수별 단어 목록(Jonathan Waller, tanos.co.uk, CC BY) 기준 · 한국어 뜻과 선정은 직접 정리" : LANG==="ko" ? "국어 낱말: 국립국어원 「한국어 학습용 어휘 목록」 · 고사성어·속담·맞춤법은 직접 정리" : "단어 기준: 2022 개정 영어과 교육과정 기본 어휘 (생활 영어는 자주 쓰는 표현 선정)";
+  $("h-src").textContent = LANG==="ko" ? "국어 낱말 출처: 국립국어원 「한국어 학습용 어휘 목록」" : LANG==="ja" ? "일본어 낱말: JLPT 급수 기준 · 한국어 뜻은 직접 정리" : "";
   { const hv=BADGES.filter(b=>STATE.bd[b.id]).length; $("h-bdtxt").innerHTML=`모은 배지 <b>${hv}</b> / ${BADGES.length}개<br>새 배지에 도전해 보세요`; }
   const due=dueWords().length; $("h-revn").textContent=due; $("h-revn").classList.toggle("hidden",!due);
   const nwr=bookWords("wrong").length; $("h-bookn").textContent=nwr; $("h-bookn").classList.toggle("hidden",!nwr);
@@ -716,20 +718,24 @@ function pickStageWords(){
   return shuffle(out);
 }
 const plainItem = x => !(x[2]&&typeof x[2]==="object"&&(x[2].sp||x[2].q));
-function distractPool(word, pool){ const ko=isKo(word[0]), m=mainMean(word[1]); return pool.filter(x=>plainItem(x) && isKo(x[0])===ko && x[0].toLowerCase()!==word[0].toLowerCase() && mainMean(x[1])!==m); }
+function distractPool(word, pool){ const ko=langOf(word[0]), m=mainMean(word[1]); return pool.filter(x=>plainItem(x) && langOf(x[0])===ko && x[0].toLowerCase()!==word[0].toLowerCase() && mainMean(x[1])!==m); }
 const canSpeak = () => "speechSynthesis" in window;
-const kindOf = w => { const x=w[2]; if(x&&typeof x==="object"){ if(x.sp) return "sp"; if(x.q) return "pair"; if(x.b) return "blank"; } return isKo(w[0])?"ko":"en"; };
+const kindOf = w => { const x=w[2]; if(x&&typeof x==="object"){ if(x.sp) return "sp"; if(x.q) return "pair"; if(x.b) return "blank"; } return langOf(w[0]); };
 const choice = (word, right, wrongs) => { const co=[right,""]; return {t:null, w:word, co, opts:shuffle([co].concat(wrongs.map(s=>[s,""])))}; };
+const jaRead = w => { const x=w[2]; const r=x&&typeof x==="object"&&x.r; return r&&r!==w[0]?r:""; };
 function makeQ(word, pool){
   const kd=kindOf(word);
   if(kd==="sp"){ const q=choice(word, word[0], word[2].sp); q.t="ksp"; return q; }
   if(kd==="pair"){ const q=choice(word, word[2].a, word[2].d); q.t="pair"; return q; }
   if(kd==="blank" && Math.random()<.34){ const q=choice(word, word[2].b, word[2].d); q.t="blank"; return q; }
-  const ko = kd==="ko" || kd==="blank";
-  const types=["e2k","k2e","e2k","k2e"]; if(!ko){ types.push("spell"); if(canSpeak()) types.push("listen","listen"); }
+  const ko = kd==="ko" || kd==="blank", ja = kd==="ja";
+  const types=["e2k","k2e","e2k","k2e"]; if(!ko && !ja){ types.push("spell"); if(canSpeak()) types.push("listen","listen"); }
+  const rd=jaRead(word);
+  if(ja){ if(rd) types.push("read","read"); if(canSpeak()) types.push("listen"); }
   let t=types[Math.floor(Math.random()*types.length)];
   if(t==="spell" && (!/^[a-z]{3,12}$/i.test(word[0]))) t="e2k";
-  let p=distractPool(word,pool); if(p.length<3) p=distractPool(word, ko?WORDS.ko.stages[0].words:STAGES[0].words.concat(STAGES[1].words));
+  let p=distractPool(word,pool); if(p.length<3) p=distractPool(word, ja?WORDS.ja.stages[0].words:ko?WORDS.ko.stages[0].words:STAGES[0].words.concat(STAGES[1].words));
+  if(t==="read"){ const rs=[...new Set(p.map(jaRead).filter(x=>x&&x!==rd))]; if(rs.length>=3){ const near=shuffle(rs).sort((a,b)=>Math.abs(a.length-rd.length)-Math.abs(b.length-rd.length)).slice(0,8); const q=choice(word, rd, shuffle(near).slice(0,3)); q.t="read"; return q; } t="e2k"; }
   const ds=shuffle(p).slice(0,3);
   return {t, w:word, opts:shuffle([word].concat(ds))};
 }
@@ -742,7 +748,7 @@ function startGame(mode, words, setInfo){
   GAME={mode, setInfo:setInfo||null, qs:list.map(w=>makeQ(w,pool)), i:0, right:0, log:[], before:{total:STATE.total, week:STATE.week, rank:RK.week}};
   go("quiz"); showQ();
 }
-function speak(w){ if(!canSpeak()||isKo(w)) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(w); u.lang="en-US"; u.rate=.85; speechSynthesis.speak(u); }catch(e){} }
+function speak(w){ if(!canSpeak()||isKo(w)) return; try{ speechSynthesis.cancel(); const ja=isJa(w), it=WMAP[w.toLowerCase()], txt=ja?((it&&jaRead(it.x))||w):w; const u=new SpeechSynthesisUtterance(txt); u.lang=ja?"ja-JP":"en-US"; u.rate=.85; speechSynthesis.speak(u); }catch(e){} }
 
 function showQ(){
   const q=GAME.qs[GAME.i], n=GAME.qs.length;
@@ -755,7 +761,10 @@ function showQ(){
     $("q-type").textContent="뜻을 골라요"; W.textContent=q.w[0]; if(q.w[0].length>14) W.classList.add("long"); if(canSpeak()&&!isKo(q.w[0])) SW.innerHTML=sayBtn();
     A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[1])}</button>`).join("")}</div>`;
   }else if(q.t==="k2e"){
-    $("q-type").textContent=isKo(q.w[0])?(/\s/.test(q.w[0])?"알맞은 말을 골라요":"알맞은 낱말을 골라요"):(/\s/.test(q.w[0])?"영어 표현을 골라요":"영어 단어를 골라요"); W.textContent=q.w[1]; W.classList.add("ko"); if(q.w[1].length>16) W.classList.add("long");
+    $("q-type").textContent=isKo(q.w[0])?(/\s/.test(q.w[0])?"알맞은 말을 골라요":"알맞은 낱말을 골라요"):isJa(q.w[0])?"일본어를 골라요":(/\s/.test(q.w[0])?"영어 표현을 골라요":"영어 단어를 골라요"); W.textContent=q.w[1]; W.classList.add("ko"); if(q.w[1].length>16) W.classList.add("long");
+    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}${isJa(o[0])&&jaRead(o)?` <small style="opacity:.6">${esc(jaRead(o))}</small>`:""}</button>`).join("")}</div>`;
+  }else if(q.t==="read"){
+    $("q-type").textContent="읽는 법을 골라요"; W.textContent=q.w[0];
     A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}</button>`).join("")}</div>`;
   }else if(q.t==="ksp"||q.t==="pair"||q.t==="blank"){
     $("q-type").textContent = q.t==="ksp"?"맞는 표현을 골라요":q.t==="blank"?"빈칸에 알맞은 말을 골라요":"알맞은 말을 골라요";
@@ -798,7 +807,7 @@ function answer(ok, typed, btn){
   // 표시
   document.querySelectorAll("#q-ans .opt").forEach(b=>{ const o=q.opts[+b.dataset.i]; if(o===(q.co||q.w)) b.classList.add("ok"); else if(b===btn) b.classList.add("no"); });
   const fb=$("q-fb");
-  const ansTxt = q.t==="ksp"?`<b>${esc(q.w[0])}</b> · ${esc(q.w[1])}`: q.t==="pair"?`<b>${esc(q.w[2].a)}</b> · ${esc(q.w[0])}`: q.t==="blank"?`<b>${esc(q.w[2].b)}</b> · ${esc(q.w[0])} = ${esc(q.w[1])}`: `<b>${esc(q.w[0])}</b> = ${esc(q.w[1])}`;
+  const ansTxt = q.t==="ksp"?`<b>${esc(q.w[0])}</b> · ${esc(q.w[1])}`: q.t==="pair"?`<b>${esc(q.w[2].a)}</b> · ${esc(q.w[0])}`: q.t==="blank"?`<b>${esc(q.w[2].b)}</b> · ${esc(q.w[0])} = ${esc(q.w[1])}`: `<b>${esc(q.w[0])}</b>${isJa(q.w[0])&&jaRead(q.w)?`(${esc(jaRead(q.w))})`:""} = ${esc(q.w[1])}`;
   if(ok){ fb.className="fb ok"; fb.innerHTML=`⭕ 정답!${STATE.combo>=3?` 🔥 ${STATE.combo}연속!`:""} <small>${ansTxt.replace(/<\/?b>/g,"")}</small>`; }
   else { fb.className="fb no"; fb.innerHTML=`❌ 아쉬워요${typed?` (적은 답: ${esc(typed)})`:""} <small>정답: ${ansTxt} · 내일 복습에 나와요</small>`; }
   if(q.t!=="e2k"||!ok) speak(q.w[0]);
