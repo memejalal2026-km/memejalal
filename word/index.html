@@ -56,6 +56,8 @@ input,textarea{font:inherit;color:inherit}
 .stagecard .sname{font-size:19px;font-weight:800}.stagecard .ssub{font-size:12px;color:var(--sub)}
 .stagecard .sgo{color:var(--pri);font-weight:800;font-size:22px}
 .prog{font-style:normal;font-size:12px;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:99px;padding:2px 8px;margin-left:auto}
+.rdline{font-size:15px;font-weight:600;color:var(--sub);margin-top:6px}
+.rdopt{opacity:.65;font-size:12px;font-weight:600;margin-left:6px}
 .kick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .kcard{border-radius:18px;padding:14px 12px;color:#fff;min-height:128px;display:flex;flex-direction:column;text-align:left;box-shadow:var(--sh)}
 .kcard.k1{background:linear-gradient(145deg,#7a5cff,#3b5bfd)}.kcard.k2{background:linear-gradient(145deg,#ffb92e,#ff8a1f);color:#3a2500}
@@ -722,6 +724,35 @@ function distractPool(word, pool){ const ko=langOf(word[0]), m=mainMean(word[1])
 const canSpeak = () => "speechSynthesis" in window;
 const kindOf = w => { const x=w[2]; if(x&&typeof x==="object"){ if(x.sp) return "sp"; if(x.q) return "pair"; if(x.b) return "blank"; } return langOf(w[0]); };
 const choice = (word, right, wrongs) => { const co=[right,""]; return {t:null, w:word, co, opts:shuffle([co].concat(wrongs.map(s=>[s,""])))}; };
+/* 일본어 한글 발음 (외래어 표기법 기준의 간단한 변환) */
+const KP={あ:"아",い:"이",う:"우",え:"에",お:"오",か:"가/카",き:"기/키",く:"구/쿠",け:"게/케",こ:"고/코",さ:"사",し:"시",す:"스",せ:"세",そ:"소",た:"다/타",ち:"지/치",つ:"쓰/츠",て:"데/테",と:"도/토",な:"나",に:"니",ぬ:"누",ね:"네",の:"노",は:"하",ひ:"히",ふ:"후",へ:"헤",ほ:"호",ま:"마",み:"미",む:"무",め:"메",も:"모",や:"야",ゆ:"유",よ:"요",ら:"라",り:"리",る:"루",れ:"레",ろ:"로",わ:"와",を:"오",が:"가",ぎ:"기",ぐ:"구",げ:"게",ご:"고",ざ:"자",じ:"지",ず:"즈",ぜ:"제",ぞ:"조",だ:"다",ぢ:"지",づ:"즈",で:"데",ど:"도",ば:"바",び:"비",ぶ:"부",べ:"베",ぼ:"보",ぱ:"파",ぴ:"피",ぷ:"푸",ぺ:"페",ぽ:"포",ゔ:"부"};
+const KY={き:["갸/캬","규/큐","교/쿄"],し:["샤","슈","쇼"],ち:["자/차","주/추","조/초"],に:["냐","뉴","뇨"],ひ:["햐","휴","효"],み:["먀","뮤","묘"],り:["랴","류","료"],ぎ:["갸","규","교"],じ:["자","주","조"],び:["뱌","뷰","뵤"],ぴ:["퍄","퓨","표"]};
+const KS={てぃ:"티",でぃ:"디",ふぁ:"파",ふぃ:"피",ふぇ:"페",ふぉ:"포",じぇ:"제",ちぇ:"체",しぇ:"셰",うぃ:"위",うぇ:"웨",うぉ:"워"};
+function koPron(r){
+  const h=[...String(r)].map(c=>{ const k=c.charCodeAt(0); return k>=0x30a1&&k<=0x30f6?String.fromCharCode(k-0x60):c; });
+  let out="", i=0, first=true, sokuon=false, lastV="";
+  const pick=(t)=>{ const a=t.split("/"); return a.length>1?(first?a[0]:a[1]):a[0]; };
+  while(i<h.length){
+    const c=h[i], n=h[i+1], two=c+(n||"");
+    if(c==="ー"){ i++; continue; }
+    if(c==="っ"){ sokuon=true; i++; continue; }
+    if(c==="ん"){ out+="\u0000N"; first=false; i++; continue; }
+    let syl=null, len=1;
+    if(KS[two]){ syl=KS[two]; len=2; }
+    else if(KY[c]&&(n==="ゃ"||n==="ゅ"||n==="ょ")){ syl=pick(KY[c]["ゃゅょ".indexOf(n)]); len=2; }
+    else if(KP[c]){ syl=pick(KP[c]); }
+    else { out+=c; i++; first=false; continue; }
+    // 장음 う 생략 (오단·우단 뒤)
+    if(c==="う" && /[우오유요쿠구스즈쓰츠누무루후푸부조소도토노모로호보포코고쇼조초뇨효묘료쿄교]$/.test(out.replace(/\u0000N$/,"")) && out.length) { i++; continue; }
+    if(sokuon){ const f=KP[c]||"", nx=(syl||"")[0]; const code=nx.charCodeAt(0); out+="\u0000S"+("카키쿠케코캬큐쿄".includes(nx)||"가기구게고갸규교".includes(nx)?"G":("파피푸페포퍄퓨표".includes(nx)?"P":"T")); sokuon=false; }
+    out+=syl; i+=len; first=false;
+  }
+  // 받침 처리: ん→ㄴ, っ→ㄱ/ㅂ/ㅅ
+  const JONG={N:"ㄴ",G:"ㄱ",P:"ㅂ",T:"ㅅ"}, JI={"ㄱ":1,"ㄴ":4,"ㅂ":17,"ㅅ":19};
+  return out.replace(/\u0000N([^\u0000]?)/g,(m,x)=>m).replace(/(.)?\u0000([NS])([GPT]?)/g,(m,pre,t,k)=>{ const j=t==="N"?"ㄴ":JONG[k]; if(pre&&/[가-힣]/.test(pre)&&((pre.charCodeAt(0)-0xAC00)%28===0)) return String.fromCharCode(pre.charCodeAt(0)+JI[j]); return (pre||"")+j; });
+}
+const jaRdOf = w => { const x=w[2]; const r=x&&typeof x==="object"&&x.r; return r||(/^[぀-ヿー]+$/.test(w[0])?w[0]:""); };
+const jaLine = w => { const r=jaRdOf(w); if(!r) return ""; const pr=koPron(r); return (r!==w[0]?r+" · ":"")+pr; };
 const jaRead = w => { const x=w[2]; const r=x&&typeof x==="object"&&x.r; return r&&r!==w[0]?r:""; };
 function makeQ(word, pool){
   const kd=kindOf(word);
@@ -759,20 +790,21 @@ function showQ(){
   const sayBtn=big=>`<button class="say ${big?"big":""}" id="q-say">🔊</button>`;
   if(q.t==="e2k"){
     $("q-type").textContent="뜻을 골라요"; W.textContent=q.w[0]; if(q.w[0].length>14) W.classList.add("long"); if(canSpeak()&&!isKo(q.w[0])) SW.innerHTML=sayBtn();
+    if(isJa(q.w[0])){ const ln=jaLine(q.w); if(ln) W.insertAdjacentHTML("beforeend",`<div class="rdline">${esc(ln)}</div>`); }
     A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[1])}</button>`).join("")}</div>`;
   }else if(q.t==="k2e"){
     $("q-type").textContent=isKo(q.w[0])?(/\s/.test(q.w[0])?"알맞은 말을 골라요":"알맞은 낱말을 골라요"):isJa(q.w[0])?"일본어를 골라요":(/\s/.test(q.w[0])?"영어 표현을 골라요":"영어 단어를 골라요"); W.textContent=q.w[1]; W.classList.add("ko"); if(q.w[1].length>16) W.classList.add("long");
-    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}${isJa(o[0])&&jaRead(o)?` <small style="opacity:.6">${esc(jaRead(o))}</small>`:""}</button>`).join("")}</div>`;
+    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}${isJa(o[0])&&jaLine(o)?` <small class="rdopt">${esc(jaLine(o))}</small>`:""}</button>`).join("")}</div>`;
   }else if(q.t==="read"){
-    $("q-type").textContent="읽는 법을 골라요"; W.textContent=q.w[0];
-    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}</button>`).join("")}</div>`;
+    $("q-type").textContent="읽는 법을 골라요"; W.textContent=q.w[0]; if(canSpeak()) SW.innerHTML=sayBtn();
+    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])} <small class="rdopt">${esc(koPron(o[0]))}</small></button>`).join("")}</div>`;
   }else if(q.t==="ksp"||q.t==="pair"||q.t==="blank"){
     $("q-type").textContent = q.t==="ksp"?"맞는 표현을 골라요":q.t==="blank"?"빈칸에 알맞은 말을 골라요":"알맞은 말을 골라요";
     W.textContent = q.t==="ksp"?"어느 것이 맞을까요?":q.t==="pair"?q.w[2].q:q.w[0].replace(q.w[2].b,"(   )"); W.classList.add("ko"); if(W.textContent.length>14) W.classList.add("long");
     A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}</button>`).join("")}</div>`;
   }else if(q.t==="listen"){
     $("q-type").textContent=/\s/.test(q.w[0])?"듣고 맞는 표현을 골라요":"듣고 맞는 단어를 골라요"; W.textContent=""; SW.innerHTML=sayBtn(true); setTimeout(()=>speak(q.w[0]),250);
-    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}</button>`).join("")}</div>`;
+    A.innerHTML=`<div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><i>${i+1}</i>${esc(o[0])}${isJa(o[0])&&jaLine(o)?` <small class="rdopt">${esc(jaLine(o))}</small>`:""}</button>`).join("")}</div>`;
   }else{ // spell
     const w=q.w[0], keep=new Set([0]); const k=Math.max(1,Math.floor(w.length/3)); shuffle([...Array(w.length).keys()].slice(1)).slice(0,k-1).forEach(x=>keep.add(x));
     $("q-type").textContent=`철자를 완성해요 · 뜻: ${q.w[1]}`; W.textContent=[...w].map((c,i)=>keep.has(i)?c:"_").join(""); W.classList.add("mask");
@@ -807,7 +839,7 @@ function answer(ok, typed, btn){
   // 표시
   document.querySelectorAll("#q-ans .opt").forEach(b=>{ const o=q.opts[+b.dataset.i]; if(o===(q.co||q.w)) b.classList.add("ok"); else if(b===btn) b.classList.add("no"); });
   const fb=$("q-fb");
-  const ansTxt = q.t==="ksp"?`<b>${esc(q.w[0])}</b> · ${esc(q.w[1])}`: q.t==="pair"?`<b>${esc(q.w[2].a)}</b> · ${esc(q.w[0])}`: q.t==="blank"?`<b>${esc(q.w[2].b)}</b> · ${esc(q.w[0])} = ${esc(q.w[1])}`: `<b>${esc(q.w[0])}</b>${isJa(q.w[0])&&jaRead(q.w)?`(${esc(jaRead(q.w))})`:""} = ${esc(q.w[1])}`;
+  const ansTxt = q.t==="ksp"?`<b>${esc(q.w[0])}</b> · ${esc(q.w[1])}`: q.t==="pair"?`<b>${esc(q.w[2].a)}</b> · ${esc(q.w[0])}`: q.t==="blank"?`<b>${esc(q.w[2].b)}</b> · ${esc(q.w[0])} = ${esc(q.w[1])}`: `<b>${esc(q.w[0])}</b>${isJa(q.w[0])&&jaLine(q.w)?` (${esc(jaLine(q.w))})`:""} = ${esc(q.w[1])}`;
   if(ok){ fb.className="fb ok"; fb.innerHTML=`⭕ 정답!${STATE.combo>=3?` 🔥 ${STATE.combo}연속!`:""} <small>${ansTxt.replace(/<\/?b>/g,"")}</small>`; }
   else { fb.className="fb no"; fb.innerHTML=`❌ 아쉬워요${typed?` (적은 답: ${esc(typed)})`:""} <small>정답: ${ansTxt} · 내일 복습에 나와요</small>`; }
   if(q.t!=="e2k"||!ok) speak(q.w[0]);
